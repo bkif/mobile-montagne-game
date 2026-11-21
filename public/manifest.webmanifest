@@ -1,0 +1,19 @@
+{
+  "name": "L'Écho du Col",
+  "short_name": "Écho du Col",
+  "description": "Aventure narrative alpine en pixel-art, poétique et pacifiste.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0B1021",
+  "theme_color": "#000000",
+  "lang": "fr",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

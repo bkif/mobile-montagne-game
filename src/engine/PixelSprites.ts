@@ -2,28 +2,29 @@ import { Direction, PortraitId } from '../types/game';
 
 const PALETTE: Record<string, string> = {
   '.': 'transparent',
-  K: '#050814', // Deep abyss black-blue
-  N: '#0B1021', // Midnight indigo
-  S: '#1E293B', // Slate mountain shadow
-  M: '#334155', // Mid slate
-  L: '#64748B', // Light rock grey-blue
-  B: '#94A3B8', // Pale ice-slate
-  W: '#F1F5F9', // Snow white
-  P: '#FFFFFF', // Pure white highlight
-  I: '#BAE6FD', // Frost cyan
-  C: '#38BDF8', // Bright ice blue
-  G: '#14532D', // Deep pine green
-  g: '#166534', // Mid pine green
-  T: '#475569', // Timber shadow
-  t: '#78350F', // Wood dark brown
-  w: '#B45309', // Wood warm brown
-  A: '#F59E0B', // Warm amber
-  Y: '#FDE68A', // Bright lantern gold
-  R: '#DC2626', // Cozy scarf / cablecar red
-  r: '#F87171', // Soft coral red
-  V: '#C084FC', // Spirit lavender
-  v: '#E9D5FF', // Pale mist violet
-  D: '#000000', // Pure black
+  K: '#050814',
+  N: '#0B1021',
+  S: '#1E293B',
+  M: '#334155',
+  L: '#64748B',
+  B: '#94A3B8',
+  W: '#F1F5F9',
+  P: '#FFFFFF',
+  I: '#BAE6FD',
+  C: '#38BDF8',
+  G: '#14532D',
+  g: '#166534',
+  l: '#22C55E',
+  T: '#475569',
+  t: '#78350F',
+  w: '#B45309',
+  A: '#F59E0B',
+  Y: '#FDE68A',
+  R: '#DC2626',
+  r: '#F87171',
+  V: '#C084FC',
+  v: '#E9D5FF',
+  D: '#000000',
 };
 
 function createCanvasFromGrid(
@@ -49,6 +50,82 @@ function createCanvasFromGrid(
   }
   return canvas;
 }
+
+const TILE_GRASS = [
+  'GGGGGGGGGGGGGGGG',
+  'GgGGGGgGGGGGGgGG',
+  'GGGGGGGGGGGGGGGG',
+  'GGGlGGGGGGGGGGGG',
+  'GGGGGGGGgGGGlGGG',
+  'GGGGGGGGGGGGGGGG',
+  'GgGGGGGGGGGgGGGG',
+  'GGGGGGGGGGGGGGGG',
+  'GGGGgGGGGGGGGGGG',
+  'GGGGGGGGGlGGGGGG',
+  'GGGlGGGGGGGGgGGG',
+  'GGGGGGGGGGGGGGGG',
+  'GGGGGGgGGGGGGGGG',
+  'GGGGGGGGGGGGgGGG',
+  'GgGGGGGGGGGGGGGG',
+  'GGGGGGGGGGGGGGGG',
+];
+
+const TILE_STONE = [
+  'SSSSSSSSSSSSSSSS',
+  'SMMMSMMMSSSMMMMS',
+  'SMLMSMLMSMSMLMMS',
+  'SSSSSSSSSSSSSSSS',
+  'MMMSSSMMMMSSSMMM',
+  'MLMSSSMLLMSSSMMS',
+  'SSSSSSSSSSSSSSSS',
+  'SMMMMSMMMSMMMMMS',
+  'SMLLMSMLMSMLLMLS',
+  'SSSSSSSSSSSSSSSS',
+  'MMMSSSMMMMSSSMMM',
+  'MLMSSSMMMMSSSLMS',
+  'SSSSSSSSSSSSSSSS',
+  'SMMMSMMMMSSMMMMS',
+  'SMLMSMLMMSSMLMMS',
+  'SSSSSSSSSSSSSSSS',
+];
+
+const TILE_CABIN = [
+  'tttttttttttttttt',
+  'twwwwwwwwwwwwwwt',
+  'twwttttttttttwwt',
+  'twwwwwwwwwwwwwwt',
+  'twwYYYYwwYYYYwwt',
+  'twwYAAYwwYAAYwwt',
+  'twwYYYYwwYYYYwwt',
+  'twwwwwwwwwwwwwwt',
+  'twwttttttttttwwt',
+  'twwwwwwAAwwwwwwt',
+  'twwwwwwAAwwwwwwt',
+  'twwwwwwwwwwwwwwt',
+  'SSSSSSSSSSSSSSSS',
+  'SMMMSMMMSSSMMMMS',
+  'SSSSSSSSSSSSSSSS',
+  'BBBBBBBBBBBBBBBB',
+];
+
+const TILE_MIST = [
+  'BBBBBBBBBBBBBBBB',
+  'BWWWWWWBBWWWWWWB',
+  'WWWWvWWWWWWvWWWW',
+  'WWvWWWWWvWWWWvWW',
+  'BBBBWWWWWBBBBWWW',
+  'WWWWWBBWWWWWWWWB',
+  'BWWWWWWvWWWWvWWW',
+  'WWWWvWWWWWWWWWBB',
+  'BBBBWWWWWWBBWWWW',
+  'WWWWWWvWWWWWWWWW',
+  'WWvWWWWWWWvWWBWW',
+  'WWWWBBBBWWWWWWWB',
+  'BWWWWWWWWWvWWWWW',
+  'WWWWvWWWWWWWWBBW',
+  'BWWWWWWWWvWWWWWB',
+  'BBBBBBBBBBBBBBBB',
+];
 
 const TILE_SNOW = [
   'BBBBBBBBBBBBBBBB',
@@ -221,6 +298,101 @@ const SPRITE_SIGN = [
   '................',
 ];
 
+const SPRITE_CAIRN_FALLEN = [
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+  '.....LLLL.......',
+  '....LLMMML......',
+  '..LLLL..LLLL....',
+  '.LLMMML..LMMML..',
+  '.SSSSSS..SSSSS..',
+  '..BBBBBBBBBBB...',
+  '................',
+  '................',
+  '................',
+];
+
+const SPRITE_CAIRN_REBUILT = [
+  '................',
+  '.......YY.......',
+  '......LLLL......',
+  '......LMML......',
+  '.....LLLLLL.....',
+  '....LLMMMMLL....',
+  '....SSSSSSSS....',
+  '...LLLLLLLLLL...',
+  '..LLMMMMMMMMLL..',
+  '..SSSSSSSSSSSS..',
+  '..BBBBBBBBBBBB..',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+];
+
+const SPRITE_CLIMB_LEDGE = [
+  '.....YY..YY.....',
+  '....wAAwwAAw....',
+  '...SSwwSSwwSS...',
+  '..SSSwwSSwwSSS..',
+  '..MMMwwMMwwMMM..',
+  '..LLLwwLLwwLLL..',
+  '..MMMwwMMwwMMM..',
+  '..SSSwwSSwwSSS..',
+  '..MMMwwMMwwMMM..',
+  '..LLLwwLLwwLLL..',
+  '..MMMwwMMwwMMM..',
+  '..SSSwwSSwwSSS..',
+  '...BBBBBBBBBB...',
+  '................',
+  '................',
+  '................',
+];
+
+const SPRITE_JOURNAL_PAGE = [
+  '................',
+  '................',
+  '....PPPPPPPP....',
+  '....PWWWWWWP....',
+  '....PWTTTTWP....',
+  '....PWWWWWWP....',
+  '....PWTTTTWP....',
+  '....PWWWWWWP....',
+  '....PWTTTTWP....',
+  '....PWWAAAWP....',
+  '....PWWWWWWP....',
+  '....PPPPPPPP....',
+  '......YYYY......',
+  '................',
+  '................',
+  '................',
+];
+
+const SPRITE_BERRY_SHRUB = [
+  '................',
+  '......GGGG......',
+  '....GGGGGGGG....',
+  '...GGGRRGGGgG...',
+  '..GGGGRRGGgRRg..',
+  '..GGgGGGGGGrrG..',
+  '..GgRRgGGGgGGG..',
+  '..GgrrgGGgGGGG..',
+  '...GGGGgGGgGG...',
+  '....GGGttGGG....',
+  '.......tt.......',
+  '......BBBB......',
+  '................',
+  '................',
+  '................',
+  '................',
+];
+
 const SPRITE_CAMPFIRE_0 = [
   '................',
   '.......YY.......',
@@ -360,7 +532,6 @@ function makePlayerSprite(dir: Direction, frame: number): string[] {
       '................',
     ];
   }
-  // down
   return [
     '......NNNN......',
     '.....NNNNNN.....',
@@ -381,79 +552,53 @@ function makePlayerSprite(dir: Direction, frame: number): string[] {
   ];
 }
 
-// 24x24 NPC Sprites
-const SPRITE_IBEX = [
-  '.....SSS........SSS.....',
-  '....SSSSS......SSSSS....',
-  '...SS...SS....SS...SS...',
-  '...SS....SSSSSS....SS...',
-  '....SS..WWWWWWWW..SS....',
-  '........WWWWWWWW........',
-  '.......WWKWWWWKWW.......',
-  '.......WWWWWWWWWW.......',
-  '........WWSSSSWW........',
-  '........RRRRRRRR........',
-  '.......WWWWWWWWWW.......',
-  '......WWWWWWWWWWWW......',
-  '......WWBBBBBBBBWW......',
-  '......WWWWWWWWWWWW......',
-  '.......BBBBBBBBBB.......',
-  '.......BB......BB.......',
-  '.......BB......BB.......',
-  '.......SS......SS.......',
-  '......BBBB....BBBB......',
-  '........................',
-  '........................',
-  '........................',
-  '........................',
-  '........................',
-];
+function makeHumanNpc(scarf: string, coat: string, hair: string): string[] {
+  return [
+    '........................',
+    `.........${hair.repeat(6)}.........`,
+    `........${hair.repeat(8)}........`,
+    `........${hair}WWWWWW${hair}........`,
+    `........WWKWWKWW........`,
+    `........WWWWWWWW........`,
+    `........${scarf.repeat(8)}........`,
+    `.......${coat.repeat(10)}.......`,
+    `......${coat.repeat(12)}......`,
+    `......${coat.repeat(12)}......`,
+    `.......${coat.repeat(10)}.......`,
+    `........SSSSSSSS........`,
+    `........SS....SS........`,
+    `........SS....SS........`,
+    `.......NNN....NNN.......`,
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+  ];
+}
 
-const SPRITE_CABLECAR = [
-  '..........MMMM..........',
-  '...........MM...........',
-  '...........MM...........',
-  '..........RRRR..........',
-  '....RRRRRRRRRRRRRRRR....',
-  '...RRRRRRRRRRRRRRRRRR...',
-  '...RRBBBBBBBBBBBBBBRR...',
-  '...RRBCCCCCCCCCCCCBRR...',
-  '...RRBCKKCCCCKKCCCBRR...',
-  '...RRBCKKCCCCKKCCCBRR...',
-  '...RRBCCCCCCCCCCCCBRR...',
-  '...RRBBBBBBBBBBBBBBRR...',
-  '...RRRRRRRRRRRRRRRRRR...',
-  '...RRRRAAARRRRAAARRRR...',
-  '...RRRRRRRRRRRRRRRRRR...',
-  '...RRRRRRBBBBBBBRRRRR...',
-  '....RRRRRRRRRRRRRRRR....',
-  '.....MMMM......MMMM.....',
-  '....BBBBBB....BBBBBB....',
+const SPRITE_LYNX = [
   '........................',
+  '....KK............KK....',
+  '....KAK..........KAK....',
+  '....AAA..AAAAAA..AAA....',
+  '....AAAAAAAAAAAAAAAA....',
+  '.....AAAWWWAAWWWAAA.....',
+  '.....AAAKWAAAAWKAAA.....',
+  '......AAWWWWWWWWAA......',
+  '.......AAAWKKWAAA.......',
+  '......AAAAAAAAAAAA......',
+  '.....AAWWWWWWWWWWAA.....',
+  '....AAAAAAAAAAAAAAAA....',
+  '....AAAWWWWWWWWWWAAA....',
+  '.....AA..........AA.....',
+  '.....AA..........AA.....',
+  '....WWW..........WWW....',
   '........................',
-  '........................',
-  '........................',
-  '........................',
-];
-
-const SPRITE_SPIRIT = [
-  '........................',
-  '..........vvvv..........',
-  '........vvPPPPvv........',
-  '.......vPPPPPPPPv.......',
-  '......vPPVVVVVVPPv......',
-  '.....vPPVVVVVVVVPPv.....',
-  '.....vPVVKKVVKKVVPv.....',
-  '.....vPVVKKVVKKVVPv.....',
-  '.....vPPVVVVVVVVPPv.....',
-  '......vPPVVVVVVPPv......',
-  '......vPPPVVVVPPPv......',
-  '.....vPPPPVVVVPPPPv.....',
-  '.....vPP.PPPPPP.PPv.....',
-  '......v..PPPPPP..v......',
-  '.........vPPPPv.........',
-  '........v.vPPv.v........',
-  '...........vv...........',
   '........................',
   '........................',
   '........................',
@@ -463,24 +608,78 @@ const SPRITE_SPIRIT = [
   '........................',
 ];
 
-const SPRITE_LANTERN_SHRINE = [
-  '..........WWWW..........',
-  '........WWSSSSWW........',
-  '.......SSSSSSSSSS.......',
+const SPRITE_CERF = [
+  '..BB................BB..',
+  '..BB.BB..........BB.BB..',
+  '...BBB.BB......BB.BBB...',
+  '....BBBB........BBBB....',
+  '.....BBBCCCCCCCCBBB.....',
+  '.......CCCCCCCCCC.......',
+  '......CCCKCCCCKCCC......',
+  '......CCCCCCCCCCCC......',
+  '.......CCWWWWWWCC.......',
+  '......CCCCCCCCCCCC......',
+  '.....CCPPPPPPPPPPCC.....',
+  '.....CCCCCCCCCCCCCC.....',
+  '......CCCCCCCCCCCC......',
+  '......CC........CC......',
+  '......CC........CC......',
+  '.....NNN........NNN.....',
+  '........................',
+  '........................',
+  '........................',
+  '........................',
+  '........................',
+  '........................',
+  '........................',
+  '........................',
+];
+
+const SPRITE_GYPAETE = [
+  '........................',
+  '..MMMMMM........MMMMMM..',
+  '.MMVVVVMM......MMVVVVMM.',
+  '.MVVVVVVMM....MMVVVVVVM.',
+  '..MVVVVVVMWWWWMMVVVVVVM.',
+  '...MMVVVVWWKKWWVVVVVMM..',
+  '....MMVVVWWAAWWVVVVMM...',
+  '.....MMVVWWWWWWVVVMM....',
+  '......MMVVVVVVVVVMM.....',
+  '.......MMVVVVVVVMM......',
+  '........MMVVVVVMM.......',
+  '.........MMVVVMM........',
+  '..........AA.AA.........',
+  '.........YY...YY........',
+  '........................',
+  '........................',
+  '........................',
+  '........................',
+  '........................',
+  '........................',
+  '........................',
+  '........................',
+  '........................',
+  '........................',
+];
+
+const SPRITE_MONOLITH = [
+  '...........CC...........',
+  '..........CCCC..........',
+  '.........CCPPCC.........',
+  '........CCPPPPCC........',
+  '........CCYYYYCC........',
+  '.......CCCYAAYCCC.......',
+  '.......CCCYAAYCCC.......',
+  '.......CCCYYYYCCC.......',
+  '......CCCCPPPPCCCC......',
+  '......CCCCPPPPCCCC......',
+  '......CCCCCCCCCCCC......',
   '......SSSSSSSSSSSS......',
-  '........MMAAAAAM........',
-  '........MYYYYYYM........',
-  '........MYPPPPYM........',
-  '........MYPPPPYM........',
-  '........MYYYYYYM........',
-  '........MMAAAAAM........',
-  '.......SSSSSSSSSS.......',
-  '........MMMMMMMM........',
-  '........SSSSSSSS........',
-  '........SSSSSSSS........',
-  '.......SSSSSSSSSS.......',
-  '......SSSSSSSSSSSS......',
-  '.....BBBBBBBBBBBBBB.....',
+  '.....SSSSMMMMMMSSSS.....',
+  '....SSSSMMMMMMMMSSSS....',
+  '....BBBBBBBBBBBBBBBB....',
+  '........................',
+  '........................',
   '........................',
   '........................',
   '........................',
@@ -490,189 +689,47 @@ const SPRITE_LANTERN_SHRINE = [
   '........................',
 ];
 
-// 32x32 Dialogue Portraits (high contrast Undertale-style with subtle accent)
-const PORTRAIT_IBEX: string[] = [
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDWWDDDDDDDDDDDDDDDDDDWWDDDDD',
-  'DDDDWWWWDDDDDDDDDDDDDDDDWWWWDDDD',
-  'DDDWWDDWWDDDDDDDDDDDDDDWWDDWWDDD',
-  'DDDWWDDDWWDDDDDDDDDDDDWWDDDWWDDD',
-  'DDDDWWDDDWWDDWWWWWWDDWWDDDWWDDDD',
-  'DDDDDWWDDDWWWWWWWWWWWWDDDWWDDDDD',
-  'DDDDDDWWDDWWWWWWWWWWWWDDWWDDDDDD',
-  'DDDDDDDWWWWWWWWWWWWWWWWWWDDDDDDD',
-  'DDDDDDDDWWWWWWWWWWWWWWWWDDDDDDDD',
-  'DDDDDDDWWWWWWWWWWWWWWWWWWDDDDDDD',
-  'DDDDDDDWWWDDDDWWWWDDDDWWWDDDDDDD',
-  'DDDDDDDWWWDPPDWWWWDPPDWWWDDDDDDD',
-  'DDDDDDDWWWDDDDWWWWDDDDWWWDDDDDDD',
-  'DDDDDDDDWWWWWWWWWWWWWWWWDDDDDDDD',
-  'DDDDDDDDWWWWWWWWWWWWWWWWDDDDDDDD',
-  'DDDDDDDDDWWWWWWDDWWWWWWDDDDDDDDD',
-  'DDDDDDDDDDWWWWWWWWWWWWDDDDDDDDDD',
-  'DDDDDDDDDDWWDDDDDDDDWWDDDDDDDDDD',
-  'DDDDDDDDDDDWWWWWWWWWWDDDDDDDDDDD',
-  'DDDDDDDDDDDDWWWWWWWWDDDDDDDDDDDD',
-  'DDDDDDDDDDDDRRRRRRRRDDDDDDDDDDDD',
-  'DDDDDDDDDDDRRRRRRRRRRDDDDDDDDDDD',
-  'DDDDDDDDDDWWWWWWWWWWWWDDDDDDDDDD',
-  'DDDDDDDDWWWWWWWWWWWWWWWWDDDDDDDD',
-  'DDDDDDDWWWWWWWWWWWWWWWWWWDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-];
-
-const PORTRAIT_CABLECAR: string[] = [
-  'DDDDDDDDDDDDDDWWWWDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDWWDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDWWDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDRRRRDDDDDDDDDDDDDD',
-  'DDDDDDDRRRRRRRRRRRRRRRRRRDDDDDDD',
-  'DDDDDDRRRRRRRRRRRRRRRRRRRRDDDDDD',
-  'DDDDDRRWWWWWWWWWWWWWWWWWWWRDDDDD',
-  'DDDDDRRWWWWWWWWWWWWWWWWWWWRDDDDD',
-  'DDDDDRRWCCCCCCCCCCCCCCCCWWRDDDDD',
-  'DDDDDRRWCWWCCCCCCCCCCWWCWWRDDDDD',
-  'DDDDDRRWCWWCCCCCCCCCCWWCWWRDDDDD',
-  'DDDDDRRWCCDDDDCCCCDDDDCCWWRDDDDD',
-  'DDDDDRRWCCDDDDCCCCDDDDCCWWRDDDDD',
-  'DDDDDRRWCCCCCCCCCCCCCCCCWWRDDDDD',
-  'DDDDDRRWCCCCCCCCCCCCCCCCWWRDDDDD',
-  'DDDDDRRWWWWWWWWWWWWWWWWWWWRDDDDD',
-  'DDDDDRRRRRRRRRRRRRRRRRRRRRRDDDDD',
-  'DDDDDRRRRRRRRRWWWWWRRRRRRRRDDDDD',
-  'DDDDDRRRRWWWRRRRRRRRWWWRRRRDDDDD',
-  'DDDDDRRRRAAARRRRRRRRAAARRRRDDDDD',
-  'DDDDDRRRRRRRRRRRRRRRRRRRRRRDDDDD',
-  'DDDDDDRRRRRRRRRRRRRRRRRRRRDDDDDD',
-  'DDDDDDDRRRRRRRRRRRRRRRRRRDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-];
-
-const PORTRAIT_SPIRIT: string[] = [
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDVVVVVVDDDDDDDDDDDDD',
-  'DDDDDDDDDDDVVVPPPPVVVDDDDDDDDDDD',
-  'DDDDDDDDDDVVPPPPPPPPVVDDDDDDDDDD',
-  'DDDDDDDDDVVPPPPPPPPPPVVDDDDDDDDD',
-  'DDDDDDDDVVPPPPPPPPPPPPVDDDDDDDDD',
-  'DDDDDDDDVPPPPVVVVVVPPPPVDDDDDDDD',
-  'DDDDDDDDVPPPVVDDDDVVPPPVDDDDDDDD',
-  'DDDDDDDDVPPPVVDPPDVVPPPVDDDDDDDD',
-  'DDDDDDDDVPPPVVDDDDVVPPPVDDDDDDDD',
-  'DDDDDDDDVPPPPVVVVVVPPPPVDDDDDDDD',
-  'DDDDDDDDVVPPPPPPPPPPPPVDDDDDDDDD',
-  'DDDDDDDDDVVPPPPPPPPPPVVDDDDDDDDD',
-  'DDDDDDDDDDVVPPWWWWPPVVDDDDDDDDDD',
-  'DDDDDDDDDDVVPPPPPPPPVVDDDDDDDDDD',
-  'DDDDDDDDDVVVPPPPPPPPVVVDDDDDDDDD',
-  'DDDDDDDDVVVPPPPPPPPPPVVVDDDDDDDD',
-  'DDDDDDDDVVDDPPPPPPPPDDVVDDDDDDDD',
-  'DDDDDDDDDDDDPPPPPPPPDDDDDDDDDDDD',
-  'DDDDDDDDDDDDVPPPPPPVDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDVPPPPVVDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDVPPVVDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDVVIDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-];
-
-const PORTRAIT_LANTERN: string[] = [
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDWWWWDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDWWWWWWWWDDDDDDDDDDDD',
-  'DDDDDDDDDDWWWWWWWWWWWWDDDDDDDDDD',
-  'DDDDDDDDDWWWWDDDDDDWWWWDDDDDDDDD',
-  'DDDDDDDDDDDDDYYYYYYDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDYYPPPPYYDDDDDDDDDDDD',
-  'DDDDDDDDDDDYYPPPPPPYYDDDDDDDDDDD',
-  'DDDDDDDDDDDYYPPPPPPYYDDDDDDDDDDD',
-  'DDDDDDDDDDDYYPPAAAPYYDDDDDDDDDDD',
-  'DDDDDDDDDDDYYPAAAAPYYDDDDDDDDDDD',
-  'DDDDDDDDDDDYYPAAAAPYYDDDDDDDDDDD',
-  'DDDDDDDDDDDYYYYAAYYYYDDDDDDDDDDD',
-  'DDDDDDDDDDDDYYYYYYYYDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDAAAAADDDDDDDDDDDDD',
-  'DDDDDDDDDDDWWWWWWWWWWDDDDDDDDDDD',
-  'DDDDDDDDDDWWWWWWWWWWWWDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDYDDDDDDDDDDDDDDDDDDYDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-];
-
-const PORTRAIT_NARRATOR: string[] = [
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDPDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDPDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDWWWDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDWWPWWDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDWWWWWWWDDDDDDDDDDDDD',
-  'DDDDDDDDDDDWWWWPWWWWDDDDDDDDDDDD',
-  'DDDDDDDDDDWWWWWWWWWWWDDDDDDDDDDD',
-  'DDDDDDDDDWWWWWWWWWWWWWDDDDDDDDDD',
-  'DDDDDDDDWWWWWWWWWWWWWWWDDDDDDDDD',
-  'DDDDDDDWWSSSSWWWWWWSSSWWDDDDDDDD',
-  'DDDDDDWWSSSSSSWWWWSSSSSWWDDDDDDD',
-  'DDDDDWWSSSSSSSSWWSSSSSSSWWDDDDDD',
-  'DDDDWWSSSSSSSSSSSSSSSSSSSWWDDDDD',
-  'DDDWWSSSSSSSSSSSSSSSSSSSSSWWDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDYYYYYDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDYPPPPPYDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDYYYYYDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-  'DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD',
-];
+function buildPortrait(
+  bg: string,
+  accent: string,
+  eyeStyle: 'calm' | 'fierce' | 'wide' | 'crystal'
+): string[] {
+  const rows: string[] = [];
+  for (let y = 0; y < 32; y++) {
+    let row = '';
+    for (let x = 0; x < 32; x++) {
+      if (y < 4 || y > 27 || x < 4 || x > 27) {
+        row += 'D';
+      } else if (y === 4 || y === 27 || x === 4 || x === 27) {
+        row += accent;
+      } else if (y >= 11 && y <= 14 && (x === 10 || x === 11 || x === 20 || x === 21)) {
+        if (eyeStyle === 'crystal') {
+          row += y === 12 || y === 13 ? 'P' : accent;
+        } else if (eyeStyle === 'fierce' && y === 11) {
+          row += bg;
+        } else {
+          row += y === 12 ? 'P' : 'D';
+        }
+      } else if (y >= 18 && y <= 20 && x >= 12 && x <= 19) {
+        row += eyeStyle === 'wide' ? 'D' : accent;
+      } else if (y >= 22 && y <= 26 && x >= 7 && x <= 24) {
+        row += accent;
+      } else {
+        row += bg;
+      }
+    }
+    rows.push(row);
+  }
+  return rows;
+}
 
 export interface SpriteBank {
   tiles: Record<string, HTMLCanvasElement>;
   player: Record<Direction, HTMLCanvasElement[]>;
-  objects: {
+  objects: Record<string, HTMLCanvasElement>;
+  animated: {
     campfire: HTMLCanvasElement[];
     item_sparkle: HTMLCanvasElement[];
-    sign_post: HTMLCanvasElement;
   };
   npcs: Record<string, HTMLCanvasElement>;
   portraits: Record<PortraitId, HTMLCanvasElement>;
@@ -685,6 +742,10 @@ export function getSpriteBank(): SpriteBank {
 
   cachedBank = {
     tiles: {
+      grass: createCanvasFromGrid(TILE_GRASS, 16, 16),
+      stone: createCanvasFromGrid(TILE_STONE, 16, 16),
+      cabin: createCanvasFromGrid(TILE_CABIN, 16, 16),
+      mist: createCanvasFromGrid(TILE_MIST, 16, 16),
       snow: createCanvasFromGrid(TILE_SNOW, 16, 16),
       path: createCanvasFromGrid(TILE_PATH, 16, 16),
       ice: createCanvasFromGrid(TILE_ICE, 16, 16),
@@ -713,6 +774,14 @@ export function getSpriteBank(): SpriteBank {
       ],
     },
     objects: {
+      sign_post: createCanvasFromGrid(SPRITE_SIGN, 16, 16),
+      cairn_fallen: createCanvasFromGrid(SPRITE_CAIRN_FALLEN, 16, 16),
+      cairn_rebuilt: createCanvasFromGrid(SPRITE_CAIRN_REBUILT, 16, 16),
+      climb_ledge: createCanvasFromGrid(SPRITE_CLIMB_LEDGE, 16, 16),
+      journal_page: createCanvasFromGrid(SPRITE_JOURNAL_PAGE, 16, 16),
+      berry_shrub: createCanvasFromGrid(SPRITE_BERRY_SHRUB, 16, 16),
+    },
+    animated: {
       campfire: [
         createCanvasFromGrid(SPRITE_CAMPFIRE_0, 16, 16),
         createCanvasFromGrid(SPRITE_CAMPFIRE_1, 16, 16),
@@ -721,21 +790,26 @@ export function getSpriteBank(): SpriteBank {
         createCanvasFromGrid(SPRITE_SPARKLE_0, 16, 16),
         createCanvasFromGrid(SPRITE_SPARKLE_1, 16, 16),
       ],
-      sign_post: createCanvasFromGrid(SPRITE_SIGN, 16, 16),
     },
     npcs: {
-      npc_ibex: createCanvasFromGrid(SPRITE_IBEX, 24, 24),
-      npc_cablecar: createCanvasFromGrid(SPRITE_CABLECAR, 24, 24),
-      npc_spirit: createCanvasFromGrid(SPRITE_SPIRIT, 24, 24),
-      lantern_shrine: createCanvasFromGrid(SPRITE_LANTERN_SHRINE, 24, 24),
+      npc_maren: createCanvasFromGrid(makeHumanNpc('R', 'S', 'B'), 24, 24),
+      npc_soren: createCanvasFromGrid(makeHumanNpc('C', 'T', 'w'), 24, 24),
+      npc_leo: createCanvasFromGrid(makeHumanNpc('A', 'M', 't'), 24, 24),
+      creature_lynx: createCanvasFromGrid(SPRITE_LYNX, 24, 24),
+      creature_cerf: createCanvasFromGrid(SPRITE_CERF, 24, 24),
+      creature_gypaete: createCanvasFromGrid(SPRITE_GYPAETE, 24, 24),
+      monolith_shrine: createCanvasFromGrid(SPRITE_MONOLITH, 24, 24),
     },
     portraits: {
-      player: createCanvasFromGrid(PORTRAIT_NARRATOR, 32, 32),
-      ibex: createCanvasFromGrid(PORTRAIT_IBEX, 32, 32),
-      cablecar: createCanvasFromGrid(PORTRAIT_CABLECAR, 32, 32),
-      spirit: createCanvasFromGrid(PORTRAIT_SPIRIT, 32, 32),
-      lantern: createCanvasFromGrid(PORTRAIT_LANTERN, 32, 32),
-      narrator: createCanvasFromGrid(PORTRAIT_NARRATOR, 32, 32),
+      player: createCanvasFromGrid(buildPortrait('W', 'R', 'calm'), 32, 32),
+      narrator: createCanvasFromGrid(buildPortrait('S', 'Y', 'crystal'), 32, 32),
+      maren: createCanvasFromGrid(buildPortrait('W', 'R', 'calm'), 32, 32),
+      soren: createCanvasFromGrid(buildPortrait('W', 'C', 'wide'), 32, 32),
+      leo: createCanvasFromGrid(buildPortrait('W', 'A', 'calm'), 32, 32),
+      lynx: createCanvasFromGrid(buildPortrait('A', 'Y', 'fierce'), 32, 32),
+      cerf: createCanvasFromGrid(buildPortrait('C', 'I', 'wide'), 32, 32),
+      gypaete: createCanvasFromGrid(buildPortrait('V', 'Y', 'fierce'), 32, 32),
+      monolith: createCanvasFromGrid(buildPortrait('N', 'C', 'crystal'), 32, 32),
     },
   };
 

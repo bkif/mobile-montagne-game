@@ -1,47 +1,71 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { CarnetSacModal } from './components/CarnetSacModal';
 import { EndingScreen } from './components/EndingScreen';
 import { PacifyArena } from './components/PacifyArena';
 import { TouchControls } from './components/TouchControls';
 import { UndertaleBox } from './components/UndertaleBox';
 import { WorldCanvas } from './components/WorldCanvas';
-import { NPCS, ZONES } from './data/mountainWorld';
+import { ZONES } from './data/mountainWorld';
 import {
   DIALOGUE_TREE,
   ITEMS,
-  buildCampfireDialogue,
+  JOURNAL_NOTES,
+  PACIFY_ENCOUNTERS,
+  buildCampfireReflection,
+  getCurrentObjective,
 } from './data/narrativeScript';
 import { audioSynth } from './engine/AudioSynth';
 import {
-  applyDialogueEffects,
+  addInventoryItem,
+  applyNarrativeEffects,
   clearSaveStorage,
+  consumeInventoryItem,
   createFreshSave,
   loadSaveFromStorage,
   writeSaveToStorage,
 } from './engine/SaveManager';
-import { InteractTarget, isNpcResolved } from './engine/WorldEngine';
 import {
+  BellPulse,
+  DustParticle,
+  InteractTarget,
+  WindState,
+  createBellPulse,
+  isEntityResolved,
+  triggerDash,
+} from './engine/WorldEngine';
+import {
+  CreatureId,
   DialogueChoice,
   DialogueNode,
   GameScreenMode,
-  NpcId,
+  InventoryItemId,
   PlayerState,
-  SaveData,
-  ZoneTransition,
+  SaveDataV2,
 } from './types/game';
 
 export function App(): React.ReactElement {
-  const [existingSave, setExistingSave] = useState<SaveData | null>(() =>
+  const [existingSave, setExistingSave] = useState<SaveDataV2 | null>(() =>
     loadSaveFromStorage()
   );
-  const [save, setSave] = useState<SaveData>(() => createFreshSave());
+  const [save, setSave] = useState<SaveDataV2>(() => createFreshSave());
   const [mode, setMode] = useState<GameScreenMode>('title');
   const [activeNode, setActiveNode] = useState<DialogueNode | null>(null);
-  const [activePacifyNpc, setActivePacifyNpc] = useState<NpcId | null>(null);
+  const [activeEncounterId, setActiveEncounterId] = useState<CreatureId | null>(
+    null
+  );
   const [interactTarget, setInteractTarget] = useState<InteractTarget | null>(
     null
   );
-  const [isMuted, setIsMuted] = useState<boolean>(false);
-  const [saveToast, setSaveToast] = useState<string>('');
+  const [staminaUi, setStaminaUi] = useState<number>(100);
+  const [windPhase, setWindPhase] = useState<WindState['phase']>('calm');
+  const [isMuted, setIsMuted] = useState<boolean>(() => audioSynth.isMuted());
+  const [toastMsg, setToastMsg] = useState<string>('');
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState<boolean>(
+    () =>
+      typeof window !== 'undefined'
+        ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        : false
+  );
   const [viewportHeight, setViewportHeight] = useState<number>(() =>
     typeof window !== 'undefined'
       ? window.visualViewport?.height ?? window.innerHeight
@@ -49,58 +73,97 @@ export function App(): React.ReactElement {
   );
 
   const playerRef = useRef<PlayerState>({
-    zoneId: save.zoneId,
-    x: save.x,
-    y: save.y,
+    actId: save.actId,
+    x: save.playerX,
+    y: save.playerY,
+    vx: 0,
+    vy: 0,
     direction: save.direction,
     isMoving: false,
     animFrame: 0,
     animTimer: 0,
+    footstepTimer: 0,
+    stamina: save.stamina,
+    staminaCooldown: 0,
+    dashTimer: 0,
+    dashDirX: 0,
+    dashDirY: -1,
+    calm: save.calm,
   });
 
   const inputVectorRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const bellPulsesRef = useRef<BellPulse[]>([]);
+  const dustRef = useRef<DustParticle[]>([]);
   const keysPressedRef = useRef<Set<string>>(new Set());
   const toastTimerRef = useRef<number | null>(null);
 
-  // Keep viewport height aligned on mobile browser bar show/hide
   useEffect(() => {
     const updateHeight = () => {
-      const h = window.visualViewport?.height ?? window.innerHeight;
-      setViewportHeight(h);
+      setViewportHeight(window.visualViewport?.height ?? window.innerHeight);
     };
     window.addEventListener('resize', updateHeight);
     window.visualViewport?.addEventListener('resize', updateHeight);
+
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const onMotionChange = (e: MediaQueryListEvent) => {
+      setPrefersReducedMotion(e.matches);
+    };
+    mq.addEventListener('change', onMotionChange);
+
     return () => {
       window.removeEventListener('resize', updateHeight);
       window.visualViewport?.removeEventListener('resize', updateHeight);
+      mq.removeEventListener('change', onMotionChange);
     };
   }, []);
 
-  // Unlock Web Audio on first pointer interaction
   useEffect(() => {
-    const handleFirstPointer = () => {
+    const unlockOnce = () => {
       audioSynth.unlock();
-      audioSynth.setZone(playerRef.current.zoneId);
+      audioSynth.setAct(playerRef.current.actId);
     };
-    window.addEventListener('pointerdown', handleFirstPointer, { once: true });
+    window.addEventListener('pointerdown', unlockOnce, { once: true });
+    window.addEventListener('keydown', unlockOnce, { once: true });
     return () => {
-      window.removeEventListener('pointerdown', handleFirstPointer);
+      window.removeEventListener('pointerdown', unlockOnce);
+      window.removeEventListener('keydown', unlockOnce);
     };
   }, []);
 
-  // Sync ambient zone music with current zone
   useEffect(() => {
-    audioSynth.setZone(save.zoneId);
-  }, [save.zoneId]);
+    audioSynth.setAct(save.actId);
+  }, [save.actId]);
 
-  const showSaveToast = useCallback((label: string) => {
-    setSaveToast(label);
+  const showToast = useCallback((msg: string) => {
+    setToastMsg(msg);
     if (toastTimerRef.current !== null) {
       window.clearTimeout(toastTimerRef.current);
     }
     toastTimerRef.current = window.setTimeout(() => {
-      setSaveToast('');
+      setToastMsg('');
     }, 2400);
+  }, []);
+
+  const syncPlayerFromSave = useCallback((s: SaveDataV2) => {
+    playerRef.current = {
+      actId: s.actId,
+      x: s.playerX,
+      y: s.playerY,
+      vx: 0,
+      vy: 0,
+      direction: s.direction,
+      isMoving: false,
+      animFrame: 0,
+      animTimer: 0,
+      footstepTimer: 0,
+      stamina: s.stamina,
+      staminaCooldown: 0,
+      dashTimer: 0,
+      dashDirX: 0,
+      dashDirY: -1,
+      calm: s.calm,
+    };
+    setStaminaUi(Math.round(s.stamina));
   }, []);
 
   const startNewGame = useCallback(() => {
@@ -110,153 +173,246 @@ export function App(): React.ReactElement {
     const fresh = createFreshSave();
     setSave(fresh);
     setExistingSave(null);
-    playerRef.current = {
-      zoneId: fresh.zoneId,
-      x: fresh.x,
-      y: fresh.y,
-      direction: fresh.direction,
-      isMoving: false,
-      animFrame: 0,
-      animTimer: 0,
-    };
+    syncPlayerFromSave(fresh);
     setActiveNode({
-      id: 'intro_narrator',
+      id: 'opening_narration',
       speaker: 'La Montagne',
       portrait: 'narrator',
       voice: 'narrator',
-      text: "La nuit tombe sur le sentier. Allumez votre courage : au bout de l'ascension, la Lanterne du Col attend quelqu'un capable d'écouter.",
+      text: "Un grondement glacé descend du Col Silencieux. Devant le Refuge du Bas, Maren vous attend près du feu.",
     });
     setMode('dialogue');
-  }, []);
+  }, [syncPlayerFromSave]);
 
   const continueGame = useCallback(() => {
     if (!existingSave) return;
     audioSynth.unlock();
     audioSynth.playUiSelect();
     setSave(existingSave);
-    playerRef.current = {
-      zoneId: existingSave.zoneId,
-      x: existingSave.x,
-      y: existingSave.y,
-      direction: existingSave.direction,
-      isMoving: false,
-      animFrame: 0,
-      animTimer: 0,
-    };
+    syncPlayerFromSave(existingSave);
     setMode('explore');
-  }, [existingSave]);
+  }, [existingSave, syncPlayerFromSave]);
 
-  const openNode = useCallback((nodeId: string, currentSave: SaveData) => {
-    const node = DIALOGUE_TREE[nodeId];
-    if (!node) {
-      setActiveNode(null);
-      setMode('explore');
+  const openDialogueNode = useCallback(
+    (nodeId: string, currentSave: SaveDataV2) => {
+      const node = DIALOGUE_TREE[nodeId];
+      if (!node) {
+        setActiveNode(null);
+        setMode('explore');
+        return;
+      }
+
+      const nextSave = applyNarrativeEffects(currentSave, {
+        setFlag: node.setFlag,
+        grantItem: node.grantItem,
+        consumeItem: node.consumeItem,
+        grantPacify: node.grantPacify,
+      });
+
+      if (nextSave !== currentSave) {
+        setSave(nextSave);
+      }
+      setActiveNode(node);
+      setMode('dialogue');
+    },
+    []
+  );
+
+  const handleBellPulse = useCallback(() => {
+    audioSynth.unlock();
+    const hasBell = save.inventory.some(
+      (e) => e.id === 'cloche_felee' && e.quantity > 0
+    );
+    if (!hasBell) {
+      audioSynth.playUiSelect();
+      showToast('Parlez à Maren !');
       return;
     }
+    audioSynth.playBellPulse();
+    const pulse = createBellPulse(playerRef.current, save);
+    bellPulsesRef.current.push(pulse);
+    showToast(
+      pulse.hintAngle !== null ? 'Écho détecté !' : 'Cloche résonante'
+    );
+  }, [save, showToast]);
 
-    const updatedSave = applyDialogueEffects(currentSave, {
-      setFlag: node.setFlag,
-      grantBefriend: node.grantBefriend,
-    });
-    if (updatedSave !== currentSave) {
-      setSave(updatedSave);
+  const handleDash = useCallback(() => {
+    if (mode !== 'explore') return;
+    audioSynth.unlock();
+    const vec = inputVectorRef.current;
+    const res = triggerDash(playerRef.current, vec.x, vec.y);
+    if (res.dashed) {
+      playerRef.current = res.player;
+      setStaminaUi(Math.round(res.player.stamina));
+      audioSynth.playDash();
     }
+  }, [mode]);
 
-    setActiveNode(node);
-    setMode('dialogue');
-  }, []);
-
-  const handleInteract = useCallback(() => {
+  const handlePrimaryAction = useCallback(() => {
     if (mode !== 'explore') return;
     audioSynth.unlock();
 
     if (!interactTarget) {
-      audioSynth.playUiSelect();
-      setActiveNode({
-        id: 'empty_inspect',
-        speaker: 'Pensée',
-        portrait: 'narrator',
-        voice: 'narrator',
-        text: 'Le vent chante dans la poudreuse. Rien de particulier juste devant vos pas.',
-      });
-      setMode('dialogue');
+      handleBellPulse();
       return;
     }
 
-    if (interactTarget.kind === 'npc') {
-      const npc = interactTarget.npc;
-      audioSynth.playUiSelect();
-      if (save.befriendedIds.includes(npc.id)) {
-        openNode(npc.befriendedNodeId, save);
-      } else if (isNpcResolved(npc.id, save)) {
-        openNode(npc.bypassedNodeId, save);
-      } else {
-        openNode(npc.rootNodeId, save);
-      }
-      return;
-    }
+    const entity = interactTarget.entity;
 
-    const obj = interactTarget.object;
-    if (obj.type === 'sign' && obj.signNodeId) {
-      audioSynth.playUiSelect();
-      openNode(obj.signNodeId, save);
-      return;
-    }
-
-    if (obj.type === 'item' && obj.itemId) {
-      audioSynth.playItemPickup();
-      const item = ITEMS[obj.itemId];
-      const nextSave: SaveData = {
-        ...save,
-        inventory: save.inventory.includes(obj.itemId)
-          ? save.inventory
-          : [...save.inventory, obj.itemId],
-        collectedItems: save.collectedItems.includes(obj.id)
-          ? save.collectedItems
-          : [...save.collectedItems, obj.id],
-      };
-      setSave(nextSave);
-      setActiveNode({
-        id: `pickup_${obj.id}`,
-        speaker: 'Trouvaille dans la neige',
-        portrait: 'narrator',
-        voice: 'narrator',
-        text: `Vous ramassez : ${item.name} !\n${item.description}`,
-      });
-      setMode('dialogue');
-      return;
-    }
-
-    if (obj.type === 'campfire') {
+    if (entity.kind === 'campfire') {
       audioSynth.playSaveChime();
+      playerRef.current.calm = 100;
+      playerRef.current.stamina = 100;
+      setStaminaUi(100);
+
       const p = playerRef.current;
-      const nextSave: SaveData = {
+      const nextSave: SaveDataV2 = {
         ...save,
-        zoneId: p.zoneId,
-        x: p.x,
-        y: p.y,
+        actId: p.actId,
+        playerX: p.x,
+        playerY: p.y,
         direction: p.direction,
+        calm: 100,
+        stamina: 100,
         savedAt: Date.now(),
         saveCount: save.saveCount + 1,
       };
       writeSaveToStorage(nextSave);
       setSave(nextSave);
       setExistingSave(nextSave);
-      showSaveToast('Sauvé ✓');
+      showToast('Sauvé ✓');
 
-      const reflection = buildCampfireDialogue(p.zoneId, nextSave);
+      const refl = buildCampfireReflection(p.actId, nextSave);
       setActiveNode({
-        id: `campfire_${obj.id}`,
-        speaker: reflection.speaker,
+        id: `campfire_${entity.id}`,
+        speaker: refl.speaker,
         portrait: 'narrator',
         voice: 'campfire',
-        text: reflection.text,
+        text: refl.text,
       });
       setMode('dialogue');
+      return;
     }
-  }, [interactTarget, mode, openNode, save, showSaveToast]);
 
-  // Keyboard support for desktop testing
+    if (entity.kind === 'cairn') {
+      audioSynth.playCairnRebuild();
+      const nextCairns = save.rebuiltCairns.includes(entity.id)
+        ? save.rebuiltCairns
+        : [...save.rebuiltCairns, entity.id];
+      const nextSave: SaveDataV2 = {
+        ...save,
+        rebuiltCairns: nextCairns,
+      };
+      setSave(nextSave);
+      showToast(`Cairn ${nextCairns.length}/3`);
+      setActiveNode({
+        id: `cairn_rebuilt_${entity.id}`,
+        speaker: entity.label,
+        portrait: 'narrator',
+        voice: 'narrator',
+        text: `Vous relevez soigneusement les pierres du ${entity.label}. La brume alentour se dissipe et révèle un passage !`,
+      });
+      setMode('dialogue');
+      return;
+    }
+
+    if (entity.kind === 'climb' && entity.climbTarget) {
+      if (entity.requiredFlag && !save.storyFlags[entity.requiredFlag]) {
+        audioSynth.playUiSelect();
+        setActiveNode({
+          id: `climb_blocked_${entity.id}`,
+          speaker: 'Paroi rocheuse',
+          portrait: 'narrator',
+          voice: 'narrator',
+          text: "L'air vibre trop fort plus haut pour partir sans équipement. Parlez d'abord à Maren devant le refuge.",
+        });
+        setMode('dialogue');
+        return;
+      }
+
+      audioSynth.playClimb();
+      const target = entity.climbTarget;
+      const nextSave: SaveDataV2 = {
+        ...save,
+        actId: target.act,
+        playerX: target.x,
+        playerY: target.y,
+        direction: target.direction,
+      };
+      setSave(nextSave);
+      playerRef.current = {
+        ...playerRef.current,
+        actId: target.act,
+        x: target.x,
+        y: target.y,
+        vx: 0,
+        vy: 0,
+        direction: target.direction,
+        dashTimer: 0,
+      };
+      showToast(ZONES[target.act].shortName);
+      return;
+    }
+
+    if (entity.kind === 'pickup') {
+      audioSynth.playItemPickup();
+      if (entity.noteId) {
+        const note = JOURNAL_NOTES.find((n) => n.id === entity.noteId);
+        const nextNotes = save.collectedNotes.includes(entity.noteId)
+          ? save.collectedNotes
+          : [...save.collectedNotes, entity.noteId];
+        setSave({
+          ...save,
+          collectedNotes: nextNotes,
+        });
+        setActiveNode({
+          id: `pickup_note_${entity.noteId}`,
+          speaker: note ? note.title : 'Page de carnet',
+          portrait: 'leo',
+          voice: 'leo',
+          text: note
+            ? `${note.fullText}\n\n(Ajoutée au Carnet : ${nextNotes.length}/6)`
+            : 'Page de carnet retrouvée.',
+        });
+        setMode('dialogue');
+        return;
+      }
+
+      if (entity.itemId) {
+        const item = ITEMS[entity.itemId];
+        const nextSave: SaveDataV2 = {
+          ...save,
+          inventory: addInventoryItem(save.inventory, entity.itemId, 1),
+          collectedPickups: save.collectedPickups.includes(entity.id)
+            ? save.collectedPickups
+            : [...save.collectedPickups, entity.id],
+        };
+        setSave(nextSave);
+        setActiveNode({
+          id: `pickup_item_${entity.id}`,
+          speaker: 'Objet recueilli',
+          portrait: 'narrator',
+          voice: 'narrator',
+          text: `Vous ajoutez à votre sac : ${item.name}.\n${item.description}`,
+        });
+        setMode('dialogue');
+        return;
+      }
+    }
+
+    // NPC / Examine / Creature / Monolith
+    audioSynth.playUiSelect();
+    const resolved = isEntityResolved(entity, save);
+    const nodeId =
+      resolved && entity.resolvedNodeId
+        ? entity.resolvedNodeId
+        : entity.rootNodeId;
+    if (nodeId) {
+      openDialogueNode(nodeId, save);
+    }
+  }, [handleBellPulse, interactTarget, mode, openDialogueNode, save, showToast]);
+
+  // Desktop keyboard support
   useEffect(() => {
     const syncKeyboardVector = () => {
       const keys = keysPressedRef.current;
@@ -284,9 +440,25 @@ export function App(): React.ReactElement {
       ) {
         keysPressedRef.current.add(e.code);
         syncKeyboardVector();
-      } else if ((e.code === 'Enter' || e.code === 'Space') && mode === 'explore') {
+      } else if (
+        (e.code === 'ShiftLeft' || e.code === 'ShiftRight') &&
+        mode === 'explore'
+      ) {
+        handleDash();
+      } else if (
+        (e.code === 'KeyE' || e.code === 'Space' || e.code === 'Enter') &&
+        mode === 'explore'
+      ) {
         e.preventDefault();
-        handleInteract();
+        handlePrimaryAction();
+      } else if (e.code === 'KeyC' && mode === 'explore') {
+        handleBellPulse();
+      } else if (
+        (e.code === 'KeyI' || e.code === 'Tab') &&
+        (mode === 'explore' || mode === 'carnet')
+      ) {
+        e.preventDefault();
+        setMode(mode === 'explore' ? 'carnet' : 'explore');
       }
     };
 
@@ -301,26 +473,7 @@ export function App(): React.ReactElement {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
     };
-  }, [handleInteract, mode]);
-
-  const handleZoneTransition = useCallback((transition: ZoneTransition) => {
-    playerRef.current = {
-      zoneId: transition.targetZone,
-      x: transition.targetX,
-      y: transition.targetY,
-      direction: transition.targetDirection,
-      isMoving: false,
-      animFrame: 0,
-      animTimer: 0,
-    };
-    setSave((prev) => ({
-      ...prev,
-      zoneId: transition.targetZone,
-      x: transition.targetX,
-      y: transition.targetY,
-      direction: transition.targetDirection,
-    }));
-  }, []);
+  }, [handleBellPulse, handleDash, handlePrimaryAction, mode]);
 
   const handleDialogueAdvance = useCallback(() => {
     if (!activeNode) {
@@ -335,31 +488,31 @@ export function App(): React.ReactElement {
     }
 
     if (activeNode.startPacify) {
-      setActivePacifyNpc(activeNode.startPacify);
+      setActiveEncounterId(activeNode.startPacify);
       setActiveNode(null);
       setMode('pacify');
       return;
     }
 
     if (activeNode.nextNodeId) {
-      openNode(activeNode.nextNodeId, save);
+      openDialogueNode(activeNode.nextNodeId, save);
       return;
     }
 
     setActiveNode(null);
     setMode('explore');
-  }, [activeNode, openNode, save]);
+  }, [activeNode, openDialogueNode, save]);
 
   const handleSelectChoice = useCallback(
     (choice: DialogueChoice) => {
-      const updatedSave = applyDialogueEffects(save, {
+      const nextSave = applyNarrativeEffects(save, {
         setFlag: choice.setFlag,
-        grantBefriend: choice.grantBefriend,
-        consumeItem: choice.consumeItem ? choice.requiredItem : undefined,
+        grantItem: choice.grantItem,
+        consumeItem: choice.consumeItem,
+        grantPacify: choice.grantPacify,
       });
-
-      if (updatedSave !== save) {
-        setSave(updatedSave);
+      if (nextSave !== save) {
+        setSave(nextSave);
       }
 
       if (choice.triggerEnding) {
@@ -369,52 +522,90 @@ export function App(): React.ReactElement {
       }
 
       if (choice.startPacify) {
-        setActivePacifyNpc(choice.startPacify);
+        setActiveEncounterId(choice.startPacify);
         setActiveNode(null);
         setMode('pacify');
         return;
       }
 
       if (choice.nextNodeId) {
-        openNode(choice.nextNodeId, updatedSave);
+        openDialogueNode(choice.nextNodeId, nextSave);
         return;
       }
 
       setActiveNode(null);
       setMode('explore');
     },
-    [openNode, save]
+    [openDialogueNode, save]
   );
 
   const handlePacifyComplete = useCallback(() => {
-    const npc = NPCS.find((n) => n.id === activePacifyNpc);
-    setActivePacifyNpc(null);
-    if (!npc) {
+    const encId = activeEncounterId;
+    setActiveEncounterId(null);
+    if (!encId) {
       setMode('explore');
       return;
     }
-    openNode(npc.pacifyConfig.successNodeId, save);
-  }, [activePacifyNpc, openNode, save]);
+    const encounter = PACIFY_ENCOUNTERS[encId];
+    openDialogueNode(encounter.successNodeId, save);
+  }, [activeEncounterId, openDialogueNode, save]);
 
-  const handlePacifyCancel = useCallback(() => {
-    setActivePacifyNpc(null);
-    setMode('explore');
-  }, []);
+  const handleUseWorldItem = useCallback(
+    (itemId: InventoryItemId) => {
+      if (itemId === 'cloche_felee') {
+        setMode('explore');
+        handleBellPulse();
+        return;
+      }
 
-  const currentZone = ZONES[save.zoneId];
-  const pacifyEntity = activePacifyNpc
-    ? NPCS.find((n) => n.id === activePacifyNpc)
+      if (itemId === 'baies_eglantier') {
+        audioSynth.playItemPickup();
+        const nextCalm = Math.min(100, save.calm + 25);
+        const nextStamina = Math.min(100, playerRef.current.stamina + 35);
+        playerRef.current.calm = nextCalm;
+        playerRef.current.stamina = nextStamina;
+        setStaminaUi(Math.round(nextStamina));
+        setSave({
+          ...save,
+          calm: nextCalm,
+          stamina: nextStamina,
+          inventory: consumeInventoryItem(save.inventory, itemId),
+        });
+        showToast('+25 Calme • +35 End.');
+        return;
+      }
+
+      if (itemId === 'tisane_pin') {
+        audioSynth.playSaveChime();
+        const nextCalm = Math.min(100, save.calm + 35);
+        playerRef.current.calm = nextCalm;
+        setSave({
+          ...save,
+          calm: nextCalm,
+          inventory: consumeInventoryItem(save.inventory, itemId),
+        });
+        showToast('+35 Calme');
+      }
+    },
+    [handleBellPulse, save, showToast]
+  );
+
+  const currentZone = ZONES[save.actId];
+  const currentObjective = getCurrentObjective(save);
+  const activeEncounter = activeEncounterId
+    ? PACIFY_ENCOUNTERS[activeEncounterId]
     : undefined;
 
   if (mode === 'title') {
     return (
       <main
-        className="w-full max-w-[480px] mx-auto bg-[#0B1021] text-white flex flex-col justify-between p-5"
+        className="w-full max-w-[480px] mx-auto bg-[#0B1021] text-white flex flex-col justify-between p-4 safe-pad"
         style={{ height: `${viewportHeight}px` }}
       >
         <div className="flex justify-end">
           <button
             type="button"
+            aria-label="Couper ou activer le son"
             onClick={() => {
               audioSynth.unlock();
               setIsMuted(audioSynth.toggleMute());
@@ -430,17 +621,17 @@ export function App(): React.ReactElement {
             <div className="w-4 h-6 bg-amber-400 shadow-[0_0_16px_rgba(245,158,11,0.9)]" />
           </div>
           <div>
-            <div className="text-[11px] uppercase tracking-[0.28em] text-amber-300 mb-1">
-              Récit Alpin Pacifiste
+            <div className="text-[11px] uppercase tracking-[0.26em] text-amber-300 mb-1">
+              4 Actes • Aventure Alpine
             </div>
             <h1 className="text-2xl font-bold tracking-wider uppercase text-white">
               L&apos;Écho du Col
             </h1>
           </div>
-          <p className="text-xs leading-relaxed text-slate-300">
-            Grimpez des sapins givrés jusqu&apos;au refuge des cimes. Écoutez
-            les voyageurs égarés, apaisez leurs vertiges avec votre petite
-            flamme et réveillez la Lanterne du Col.
+          <p className="text-xs leading-relaxed text-slate-200">
+            Grimpez du Refuge du Bas jusqu&apos;au Col Silencieux pour retrouver
+            Léo. Rebâtissez les cairns, recueillez les notes du carnet et
+            apaisez la montagne au son de la Cloche fêlée.
           </p>
 
           <div className="w-full flex flex-col gap-2.5 pt-1">
@@ -448,9 +639,10 @@ export function App(): React.ReactElement {
               <button
                 type="button"
                 onClick={continueGame}
-                className="min-h-[48px] w-full border-2 border-amber-300 bg-amber-500/15 text-amber-200 font-bold text-xs uppercase tracking-widest active:bg-amber-300 active:text-black"
+                className="min-h-[48px] w-full border-2 border-amber-300 bg-amber-500/20 text-amber-200 font-bold text-xs uppercase tracking-widest active:bg-amber-300 active:text-black"
               >
-                Continuer ({ZONES[existingSave.zoneId].altitudeMeters} m)
+                Continuer l&apos;ascension (Acte {existingSave.actId} •{' '}
+                {ZONES[existingSave.actId].altitudeMeters} m)
               </button>
             )}
             <button
@@ -458,13 +650,13 @@ export function App(): React.ReactElement {
               onClick={startNewGame}
               className="min-h-[48px] w-full border-2 border-white bg-black text-white font-bold text-xs uppercase tracking-widest active:bg-white active:text-black"
             >
-              Nouvelle Ascension
+              Nouvelle ascension
             </button>
           </div>
         </div>
 
-        <footer className="text-center text-[10px] text-slate-400 tracking-wider uppercase">
-          Conçu pour écran tactile portrait • 100% Hors-ligne
+        <footer className="text-center text-[10px] text-slate-300 tracking-wider uppercase">
+          PWA Tactile Portrait • Audio &amp; Pixel-Art Procéduraux
         </footer>
       </main>
     );
@@ -483,134 +675,124 @@ export function App(): React.ReactElement {
 
   return (
     <main
-      className="w-full max-w-[480px] mx-auto bg-black text-white flex flex-col overflow-hidden"
+      className="w-full max-w-[480px] mx-auto bg-black text-white flex flex-col overflow-hidden safe-pad"
       style={{ height: `${viewportHeight}px` }}
     >
-      {/* Top Minimal HUD Header */}
-      <header className="h-12 shrink-0 bg-black border-b-2 border-white px-3 flex items-center justify-between gap-2">
-        <div className="min-w-0 flex items-center gap-2">
-          <span className="inline-block w-2 h-2 bg-amber-400 shrink-0" />
-          <span className="text-xs font-bold tracking-wide truncate tabular-nums">
-            {currentZone.altitudeMeters.toLocaleString('fr-FR')} m —{' '}
-            {currentZone.shortName}
-          </span>
+      {/* Top Compact HUD */}
+      <header className="h-12 shrink-0 bg-black border-b-2 border-white px-2.5 flex items-center justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <span className="inline-block w-2 h-2 bg-amber-400 shrink-0" />
+            <span className="text-[11px] font-bold tracking-wide truncate tabular-nums">
+              {currentZone.altitudeMeters.toLocaleString('fr-FR')} m —{' '}
+              {currentZone.shortName}
+            </span>
+          </div>
+          <div className="text-[10px] text-slate-300 truncate">
+            {currentObjective.title}
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          {saveToast && (
-            <span className="text-[11px] font-bold text-amber-300 tracking-wider">
-              {saveToast}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {currentZone.hasWindGusts && windPhase !== 'calm' && (
+            <span
+              className={`px-1.5 py-0.5 border text-[10px] font-bold uppercase ${
+                windPhase === 'gust'
+                  ? 'border-sky-300 text-sky-200 bg-sky-500/20'
+                  : 'border-amber-300 text-amber-200'
+              }`}
+            >
+              {windPhase === 'gust' ? 'Rafale !' : 'Vent...'}
+            </span>
+          )}
+          {toastMsg && (
+            <span className="text-[10px] font-bold text-amber-300 tracking-wide">
+              {toastMsg}
             </span>
           )}
           <button
             type="button"
+            aria-label="Couper ou activer le son"
             onClick={() => {
               audioSynth.unlock();
               setIsMuted(audioSynth.toggleMute());
             }}
-            aria-label={isMuted ? 'Activer le son' : 'Couper le son'}
-            className="min-w-[48px] min-h-[48px] px-2 flex items-center justify-center text-[11px] font-bold uppercase tracking-wider border-l border-slate-700 active:bg-white active:text-black"
+            className="min-w-[48px] min-h-[44px] px-2 flex items-center justify-center text-[11px] font-bold uppercase tracking-wider border-l border-slate-700 active:bg-white active:text-black"
           >
             {isMuted ? 'Muet' : 'Son'}
           </button>
         </div>
       </header>
 
-      {/* Upper Viewport (~56% height) */}
-      <section className="flex-[56] min-h-0 relative">
+      {/* Upper Viewport (~55% height) */}
+      <section className="flex-[55] min-h-0 relative">
         <WorldCanvas
           playerRef={playerRef}
           save={save}
           inputVectorRef={inputVectorRef}
+          bellPulsesRef={bellPulsesRef}
+          dustRef={dustRef}
           isPaused={mode !== 'explore'}
-          onZoneTransition={handleZoneTransition}
+          prefersReducedMotion={prefersReducedMotion}
           onInteractTargetChange={setInteractTarget}
+          onStaminaChange={setStaminaUi}
+          onWindPhaseChange={setWindPhase}
         />
       </section>
 
-      {/* Lower Viewport (~44% height) */}
-      <section className="flex-[44] min-h-0 p-2 bg-black">
+      {/* Lower Viewport (~45% height) */}
+      <section className="flex-[45] min-h-0 p-2 bg-black">
         {mode === 'explore' && (
           <TouchControls
             onVectorChange={(vec) => {
               inputVectorRef.current = vec;
             }}
-            onInteract={handleInteract}
-            onOpenBag={() => {
+            onPrimaryAction={handlePrimaryAction}
+            onDash={handleDash}
+            onOpenCarnet={() => {
               audioSynth.playUiSelect();
-              setMode('inventory');
+              setMode('carnet');
             }}
             interactTarget={interactTarget}
-            inventoryCount={save.inventory.length}
-            befriendedCount={save.befriendedIds.length}
+            stamina={staminaUi}
+            notesCount={save.collectedNotes.length}
+            itemsCount={save.inventory.length}
           />
         )}
 
         {mode === 'dialogue' && activeNode && (
           <UndertaleBox
             node={activeNode}
-            inventory={save.inventory}
+            save={save}
             onAdvance={handleDialogueAdvance}
             onSelectChoice={handleSelectChoice}
           />
         )}
 
-        {mode === 'pacify' && pacifyEntity && (
+        {mode === 'pacify' && activeEncounter && (
           <PacifyArena
-            config={pacifyEntity.pacifyConfig}
+            config={activeEncounter}
+            inventory={save.inventory}
+            onConsumeItem={(itemId) => {
+              setSave((prev) => ({
+                ...prev,
+                inventory: consumeInventoryItem(prev.inventory, itemId),
+              }));
+            }}
             onComplete={handlePacifyComplete}
-            onCancel={handlePacifyCancel}
+            onCancel={() => {
+              setActiveEncounterId(null);
+              setMode('explore');
+            }}
           />
         )}
 
-        {mode === 'inventory' && (
-          <div className="ut-frame w-full h-full flex flex-col justify-between p-3 bg-black text-white">
-            <div className="flex items-center justify-between border-b border-slate-700 pb-2">
-              <span className="text-xs font-bold uppercase tracking-widest text-amber-300">
-                * Sac de Randonnée
-              </span>
-              <span className="text-[11px] text-slate-400 tabular-nums">
-                {save.inventory.length} objet(s)
-              </span>
-            </div>
-
-            <div className="flex-1 overflow-y-auto py-2 space-y-2">
-              {save.inventory.length === 0 ? (
-                <p className="text-xs text-slate-400 italic py-4 text-center">
-                  Votre sac est encore léger. Cherchez les éclats dorés dans la
-                  neige !
-                </p>
-              ) : (
-                save.inventory.map((itemId) => {
-                  const item = ITEMS[itemId];
-                  return (
-                    <div
-                      key={itemId}
-                      className="border border-slate-600 p-2 bg-[#050814]"
-                    >
-                      <div className="text-xs font-bold text-amber-200">
-                        ★ {item.name}
-                      </div>
-                      <div className="text-[11px] text-slate-300 mt-0.5 leading-snug">
-                        {item.description}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                audioSynth.playUiSelect();
-                setMode('explore');
-              }}
-              className="min-h-[48px] w-full border-2 border-white bg-black text-white text-xs font-bold uppercase tracking-widest active:bg-white active:text-black"
-            >
-              Fermer le sac
-            </button>
-          </div>
+        {mode === 'carnet' && (
+          <CarnetSacModal
+            save={save}
+            onUseWorldItem={handleUseWorldItem}
+            onClose={() => setMode('explore')}
+          />
         )}
       </section>
     </main>

@@ -1,16 +1,17 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { evaluateDialogueCondition } from '../data/narrativeScript';
 import { audioSynth } from '../engine/AudioSynth';
 import { getSpriteBank } from '../engine/PixelSprites';
 import {
   DialogueChoice,
   DialogueNode,
-  ItemId,
   PortraitId,
+  SaveDataV2,
 } from '../types/game';
 
 interface UndertaleBoxProps {
   node: DialogueNode;
-  inventory: ItemId[];
+  save: SaveDataV2;
   onAdvance: () => void;
   onSelectChoice: (choice: DialogueChoice) => void;
 }
@@ -26,18 +27,16 @@ const PortraitView: React.FC<{ portrait: PortraitId }> = ({ portrait }) => {
     ctx.imageSmoothingEnabled = false;
     ctx.clearRect(0, 0, 32, 32);
     const sprite = getSpriteBank().portraits[portrait];
-    if (sprite) {
-      ctx.drawImage(sprite, 0, 0);
-    }
+    if (sprite) ctx.drawImage(sprite, 0, 0);
   }, [portrait]);
 
   return (
-    <div className="shrink-0 w-16 h-16 border-2 border-white bg-black flex items-center justify-center">
+    <div className="shrink-0 w-14 h-14 border-2 border-white bg-black flex items-center justify-center">
       <canvas
         ref={canvasRef}
         width={32}
         height={32}
-        className="pixelated w-14 h-14"
+        className="pixelated w-12 h-12"
       />
     </div>
   );
@@ -45,7 +44,7 @@ const PortraitView: React.FC<{ portrait: PortraitId }> = ({ portrait }) => {
 
 export const UndertaleBox: React.FC<UndertaleBoxProps> = ({
   node,
-  inventory,
+  save,
   onAdvance,
   onSelectChoice,
 }) => {
@@ -68,17 +67,17 @@ export const UndertaleBox: React.FC<UndertaleBoxProps> = ({
         }
         return next;
       });
-    }, 26);
+    }, 24);
 
     return () => window.clearInterval(timer);
   }, [isDoneTyping, node.text, node.voice]);
 
   const availableChoices = useMemo(() => {
     if (!node.choices) return [];
-    return node.choices.filter(
-      (c) => !c.requiredItem || inventory.includes(c.requiredItem)
+    return node.choices.filter((c) =>
+      evaluateDialogueCondition(c.condition, save)
     );
-  }, [inventory, node.choices]);
+  }, [node.choices, save]);
 
   const handleBoxTap = () => {
     if (!isDoneTyping) {
@@ -92,7 +91,7 @@ export const UndertaleBox: React.FC<UndertaleBoxProps> = ({
   };
 
   return (
-    <div className="ut-frame w-full h-full flex flex-col justify-between p-3 text-white overflow-hidden">
+    <div className="ut-frame w-full h-full flex flex-col justify-between p-2.5 text-white overflow-hidden">
       <div
         role="button"
         tabIndex={0}
@@ -100,13 +99,13 @@ export const UndertaleBox: React.FC<UndertaleBoxProps> = ({
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') handleBoxTap();
         }}
-        className="flex items-start gap-3 flex-1 min-h-0 cursor-pointer"
+        className="flex items-start gap-2.5 flex-1 min-h-0 cursor-pointer"
       >
         <PortraitView portrait={node.portrait} />
         <div className="flex-1 min-w-0 flex flex-col h-full justify-between">
-          <div>
-            <div className="text-xs uppercase tracking-widest text-amber-300 font-bold mb-1">
-              * {node.speaker}
+          <div className="overflow-y-auto pr-1">
+            <div className="inline-block px-1.5 py-0.5 mb-1 border border-amber-300 bg-black text-[11px] uppercase tracking-widest text-amber-300 font-bold">
+              {node.speaker}
             </div>
             <p className="text-[13px] leading-snug text-white whitespace-pre-wrap">
               {node.text.slice(0, visibleCount)}
@@ -125,7 +124,7 @@ export const UndertaleBox: React.FC<UndertaleBoxProps> = ({
       </div>
 
       {isDoneTyping && availableChoices.length > 0 && (
-        <div className="grid grid-cols-1 gap-1.5 pt-2 overflow-y-auto max-h-[146px]">
+        <div className="grid grid-cols-1 gap-1.5 pt-2 overflow-y-auto max-h-[144px]">
           {availableChoices.map((choice) => (
             <button
               key={choice.label}
@@ -134,19 +133,19 @@ export const UndertaleBox: React.FC<UndertaleBoxProps> = ({
                 audioSynth.playUiSelect();
                 onSelectChoice(choice);
               }}
-              className={`min-h-[48px] w-full px-3 py-2 text-left text-xs font-bold tracking-wide border-2 transition-colors active:bg-white active:text-black flex items-center justify-between ${
-                choice.requiredItem
+              className={`min-h-[44px] w-full px-3 py-1.5 text-left text-xs font-bold tracking-wide border-2 transition-colors active:bg-white active:text-black flex items-center justify-between ${
+                choice.condition
                   ? 'border-amber-300 text-amber-200 bg-black'
                   : 'border-white text-white bg-black'
               }`}
             >
               <span>
-                {choice.requiredItem ? '★ ' : '▸ '}
+                {choice.condition ? '★ ' : '▸ '}
                 {choice.label}
               </span>
               {choice.startPacify && (
-                <span className="text-[10px] uppercase px-1.5 py-0.5 border border-amber-400 text-amber-300">
-                  Flamme
+                <span className="text-[10px] uppercase px-1.5 py-0.5 border border-amber-300 text-amber-200">
+                  Apaiser
                 </span>
               )}
             </button>

@@ -1,439 +1,694 @@
 import {
+  ActId,
+  CreatureId,
+  DialogueCondition,
   DialogueTree,
+  EndingId,
   InventoryItem,
-  ItemId,
-  NpcId,
-  SaveData,
-  ZoneId,
+  InventoryItemId,
+  JournalNote,
+  PacifyEncounterConfig,
+  QuestObjective,
+  SaveDataV2,
 } from '../types/game';
 
-export const ITEMS: Record<ItemId, InventoryItem> = {
-  compass: {
-    id: 'compass',
-    name: 'Boussole Égarée',
-    shortName: 'Boussole',
+export const ITEMS: Record<InventoryItemId, InventoryItem> = {
+  cloche_felee: {
+    id: 'cloche_felee',
+    name: 'Cloche fêlée',
+    shortName: 'Cloche',
     description:
-      'Une vieille boussole en laiton. Son aiguille hésite entre le Nord et la fondue.',
-    icon: 'compass',
+      'La cloche en laiton de Maren. Sa fêlure lui donne une résonance douce qui révèle les échos et apaise la faune.',
+    category: 'tool',
+    usableInWorld: true,
+    usableInPacify: true,
   },
-  thermos: {
-    id: 'thermos',
-    name: 'Thermos de Tisane Alpine',
+  baies_eglantier: {
+    id: 'baies_eglantier',
+    name: "Baies d'églantier",
+    shortName: 'Baies',
+    description:
+      "Baies sauvages cueillies sous le givre. Restaure +25 Calme et +35 Endurance, ou réchauffe un voyageur transi.",
+    category: 'consumable',
+    usableInWorld: true,
+    usableInPacify: true,
+  },
+  tisane_pin: {
+    id: 'tisane_pin',
+    name: 'Tisane de pin',
     shortName: 'Tisane',
     description:
-      'Encore tiède ! Sent le génépi, le thym sauvage et les bonnes décisions.',
-    icon: 'thermos',
+      "Thermos d'aiguilles de mélèze encore fumant. Restaure +35 Calme instantanément.",
+    category: 'consumable',
+    usableInWorld: true,
+    usableInPacify: true,
   },
-  flute: {
-    id: 'flute',
-    name: 'Flûte en Bois Sculpté',
-    shortName: 'Flûte',
+  corde_alpiniste: {
+    id: 'corde_alpiniste',
+    name: "Corde d'alpiniste",
+    shortName: 'Corde',
     description:
-      'Taillée dans du mélèze. Elle ne joue que des notes un peu mélancoliques.',
-    icon: 'flute',
+      'Confiée par Soren. Ses nœuds réguliers stabilisent le rythme lors des rencontres d’altitude.',
+    category: 'tool',
+    usableInWorld: false,
+    usableInPacify: true,
+  },
+  cristal_echo: {
+    id: 'cristal_echo',
+    name: "Cristal d'écho",
+    shortName: 'Cristal',
+    description:
+      "Un quartz vibrant recueilli sur la Crête du Vent. Amplifie fortement les harmoniques d'apaisement.",
+    category: 'relic',
+    usableInWorld: false,
+    usableInPacify: true,
+  },
+  page_carnet_liee: {
+    id: 'page_carnet_liee',
+    name: 'Accord du Monolithe',
+    shortName: 'Accord',
+    description:
+      'Schéma acoustique tracé par Léo. Permet d’accorder le Monolithe Résonant avec précision.',
+    category: 'relic',
+    usableInWorld: false,
+    usableInPacify: true,
   },
 };
 
+export const JOURNAL_NOTES: JournalNote[] = [
+  {
+    id: 'note_1',
+    act: 1,
+    title: 'Note I — Le chant désaccordé',
+    altitudeLabel: 'Acte I • 1 280 m',
+    excerpt: 'Le Monolithe s’est figé dans le givre...',
+    fullText:
+      '« Maren m’avait prévenu : lorsque la glace serre le Monolithe du Col, toute la montagne vibre faux. Je pars avec mon carnet pour tenter de le réaccorder avant la nuit. » — Léo',
+  },
+  {
+    id: 'note_2',
+    act: 2,
+    title: 'Note II — Les pierres qui guident',
+    altitudeLabel: 'Acte II • 1 740 m',
+    excerpt: 'Trois cairns renversés dans la brume...',
+    fullText:
+      '« La tempête acoustique a couché les vieux cairns de la forêt. Chaque tas de pierres relevé brise le brouillard et ouvre un passage oublié entre les sapins. » — Léo',
+  },
+  {
+    id: 'note_3',
+    act: 2,
+    title: 'Note III — Ne pas forcer le pas',
+    altitudeLabel: 'Acte II • 1 740 m',
+    excerpt: 'Les bêtes ne sont pas hostiles, elles ont peur...',
+    fullText:
+      '« Le lynx et le cerf n’attaquent pas par méchanceté : le grondement du col affole leurs oreilles. Une cloche douce ou une respiration calme suffit à apaiser leur cœur. » — Léo',
+  },
+  {
+    id: 'note_4',
+    act: 3,
+    title: 'Note IV — Lire les rafales',
+    altitudeLabel: 'Acte III • 2 210 m',
+    excerpt: 'Sur la crête, le vent prévient avant de frapper...',
+    fullText:
+      '« L’air siffle une seconde avant chaque bourrasque. Les gros blocs de granit coupent le souffle du vide, et un pas rapide permet de franchir les passerelles exposées. » — Léo',
+  },
+  {
+    id: 'note_5',
+    act: 3,
+    title: 'Note V — Les trois accords',
+    altitudeLabel: 'Acte III • 2 210 m',
+    excerpt: 'Résonance, Souffle et Esquive...',
+    fullText:
+      '« Le Monolithe répond à trois gestes : la cadence de la cloche, l’ampleur du souffle calme, et la souplesse face aux cristaux de vent. Soren a dû entendre l’écho d’en bas. » — Léo',
+  },
+  {
+    id: 'note_6',
+    act: 4,
+    title: 'Note VI — Au seuil du Col',
+    altitudeLabel: 'Acte IV • 2 680 m',
+    excerpt: 'Si quelqu’un lit ces lignes, je suis près du sanctuaire...',
+    fullText:
+      '« Mes doigts sont trop engourdis pour tenir la cadence seul. Si quelqu’un monte avec la cloche de Maren, qu’il unisse ses pas aux animaux de la montagne. » — Léo',
+  },
+];
+
+export const PACIFY_ENCOUNTERS: Record<CreatureId, PacifyEncounterConfig> = {
+  lynx_boreal: {
+    creatureId: 'lynx_boreal',
+    name: 'Lynx Boréal',
+    subtitle: 'Ses oreilles frémissent sous l’écho glacé',
+    portrait: 'lynx',
+    targetCalm: 10,
+    accentColor: '#F59E0B',
+    availableModes: ['resonance', 'souffle', 'esquive'],
+    defaultMode: 'resonance',
+    introLine: 'Le lynx plaque ses oreilles et gronde face au bruit du col.',
+    successNodeId: 'lynx_pacified',
+  },
+  cerf_brumes: {
+    creatureId: 'cerf_brumes',
+    name: 'Cerf des Brumes',
+    subtitle: 'Ses bois vibrent dans le brouillard épais',
+    portrait: 'cerf',
+    targetCalm: 10,
+    accentColor: '#38BDF8',
+    availableModes: ['souffle', 'resonance', 'esquive'],
+    defaultMode: 'souffle',
+    introLine: 'Le cerf hésite entre la fuite et la charge dans la brume.',
+    successNodeId: 'cerf_pacified',
+  },
+  gypaete_cimes: {
+    creatureId: 'gypaete_cimes',
+    name: 'Gypaète des Cimes',
+    subtitle: 'Porté par les rafales de 2 200 mètres',
+    portrait: 'gypaete',
+    targetCalm: 11,
+    accentColor: '#C084FC',
+    availableModes: ['esquive', 'resonance', 'souffle'],
+    defaultMode: 'esquive',
+    introLine: 'Le grand rapace tournoie dans les courants d’altitude.',
+    successNodeId: 'gypaete_pacified',
+  },
+  monolithe_resonant: {
+    creatureId: 'monolithe_resonant',
+    name: 'Monolithe Résonant',
+    subtitle: 'Le cœur de pierre du Col Silencieux',
+    portrait: 'monolith',
+    targetCalm: 12,
+    accentColor: '#FDE68A',
+    availableModes: ['resonance', 'souffle', 'esquive'],
+    defaultMode: 'resonance',
+    introLine:
+      'Le cristal du col pulse de manière irrégulière. Accordez votre cloche et votre souffle !',
+    successNodeId: 'monolith_awakened',
+  },
+};
+
+export function evaluateDialogueCondition(
+  cond: DialogueCondition | undefined,
+  save: SaveDataV2
+): boolean {
+  if (!cond) return true;
+  if (cond.flag && !save.storyFlags[cond.flag]) return false;
+  if (cond.notFlag && save.storyFlags[cond.notFlag]) return false;
+  if (
+    cond.hasItem &&
+    !save.inventory.some((e) => e.id === cond.hasItem && e.quantity > 0)
+  ) {
+    return false;
+  }
+  if (cond.minNotes !== undefined && save.collectedNotes.length < cond.minNotes) {
+    return false;
+  }
+  if (
+    cond.minCairns !== undefined &&
+    save.rebuiltCairns.length < cond.minCairns
+  ) {
+    return false;
+  }
+  if (
+    cond.pacifiedCreature &&
+    !save.pacifiedCreatures.includes(cond.pacifiedCreature)
+  ) {
+    return false;
+  }
+  return true;
+}
+
+export function getCurrentObjective(save: SaveDataV2): QuestObjective {
+  if (!save.storyFlags.met_maren) {
+    return {
+      id: 'obj_maren',
+      act: 1,
+      title: 'Parler à Maren au Refuge du Bas',
+      detail: 'Écoutez la gardienne blessée devant le chalet (Acte I).',
+    };
+  }
+  if (save.actId === 1) {
+    return {
+      id: 'obj_climb_1',
+      act: 1,
+      title: 'Gravir la Paroi de la Lisière',
+      detail: 'Rejoignez la paroi au nord avec la Cloche fêlée.',
+    };
+  }
+  if (save.actId === 2) {
+    return {
+      id: 'obj_cairns',
+      act: 2,
+      title: `Rebâtir les cairns (${save.rebuiltCairns.length}/3) & gravir`,
+      detail:
+        'Dégagez la brume en relevant les cairns et apaisez la faune des bois.',
+    };
+  }
+  if (save.actId === 3) {
+    return {
+      id: 'obj_ridge',
+      act: 3,
+      title: 'Traverser la Crête du Vent',
+      detail:
+        'Abritez-vous des rafales derrière les rochers et retrouvez Soren.',
+    };
+  }
+  if (!save.storyFlags.met_leo) {
+    return {
+      id: 'obj_leo',
+      act: 4,
+      title: 'Retrouver Léo au Col Silencieux',
+      detail: 'Cherchez l’apprenti près de l’abri en pierre (Acte IV).',
+    };
+  }
+  return {
+    id: 'obj_monolith',
+    act: 4,
+    title: 'Réaccorder le Monolithe Résonant',
+    detail: 'Faites vibrer la cloche au sanctuaire nord pour apaiser le col.',
+  };
+}
+
+export function computeEndingId(save: SaveDataV2): EndingId {
+  const trailCreatures: CreatureId[] = [
+    'lynx_boreal',
+    'cerf_brumes',
+    'gypaete_cimes',
+  ];
+  const allTrailPacified = trailCreatures.every((c) =>
+    save.pacifiedCreatures.includes(c)
+  );
+
+  if (allTrailPacified && save.collectedNotes.length >= 4) {
+    return 'harmony';
+  }
+
+  const pacifiedTrailCount = trailCreatures.filter((c) =>
+    save.pacifiedCreatures.includes(c)
+  ).length;
+  if (pacifiedTrailCount >= 1 || save.collectedNotes.length >= 2) {
+    return 'echo';
+  }
+
+  return 'silence';
+}
+
 export const DIALOGUE_TREE: DialogueTree = {
-  // === PANNEAUX ===
-  sign_forest_1: {
-    id: 'sign_forest_1',
-    speaker: 'Panneau en Mélèze',
+  // === ACTE I : MAREN & PIERRES ===
+  maren_intro: {
+    id: 'maren_intro',
+    speaker: 'Maren',
+    portrait: 'maren',
+    voice: 'maren',
+    text: 'Doucement, marcheur... Ma cheville a lâché juste avant la tombée du soir. Là-haut, le Monolithe Résonant s’est pris dans le givre et hurle faux.',
+    nextNodeId: 'maren_bell_gift',
+  },
+  maren_bell_gift: {
+    id: 'maren_bell_gift',
+    speaker: 'Maren',
+    portrait: 'maren',
+    voice: 'maren',
+    text: 'Mon apprenti Léo est monté seul vers le Col Silencieux pour le réaccorder. Prends ma Cloche fêlée : fais-la tinter pour repérer les pages de son carnet et apaiser les bêtes.',
+    grantItem: 'cloche_felee',
+    setFlag: 'met_maren',
+    choices: [
+      {
+        label: 'Je retrouverai Léo au sommet',
+        nextNodeId: 'maren_advice',
+      },
+      {
+        label: 'Que faut-il surveiller en chemin ?',
+        nextNodeId: 'maren_tips',
+      },
+    ],
+  },
+  maren_advice: {
+    id: 'maren_advice',
+    speaker: 'Maren',
+    portrait: 'maren',
+    voice: 'maren',
+    text: 'Merci... La paroi nord mène à la Forêt des Cairns. Cueille quelques baies d’églantier avant de grimper, et repose-toi aux feux de camp.',
+  },
+  maren_tips: {
+    id: 'maren_tips',
+    speaker: 'Maren',
+    portrait: 'maren',
+    voice: 'maren',
+    text: 'Dans la forêt, rebâtis les cairns tombés pour dissiper la brume. Plus haut, sur la crête, abrite-toi derrière les rochers quand le vent annonce une rafale !',
+  },
+  maren_after: {
+    id: 'maren_after',
+    speaker: 'Maren',
+    portrait: 'maren',
+    voice: 'maren',
+    text: 'La paroi au nord est dégagée. Fais sonner la Cloche fêlée dès que tu cherches un indice.',
+    choices: [
+      {
+        label: 'Partager des nouvelles du carnet',
+        condition: { minNotes: 1 },
+        nextNodeId: 'maren_notes_react',
+      },
+      {
+        label: 'À bientôt, Maren',
+      },
+    ],
+  },
+  maren_notes_react: {
+    id: 'maren_notes_react',
+    speaker: 'Maren',
+    portrait: 'maren',
+    voice: 'maren',
+    text: 'Tu as déjà retrouvé des pages de Léo ! Son écriture tremble un peu, mais son cœur est solide. Continue vers le col !',
+  },
+
+  lore_bergers: {
+    id: 'lore_bergers',
+    speaker: 'Stèle des Bergers',
     portrait: 'narrator',
     voice: 'narrator',
-    text: '« Col des Brumes : 1 220 m de dénivelé. Pensez à vos moufles, à votre lanterne... et à écouter les bouquetins philosophes. »',
+    text: '« Ici passe l’ancien sentier d’estive. Celui qui écoute le vent avant de courir garde ses forces pour les cimes. »',
   },
-  sign_summit_1: {
-    id: 'sign_summit_1',
-    speaker: 'Panneau du Refuge',
+  lore_borne_act1: {
+    id: 'lore_borne_act1',
+    speaker: 'Borne du Sentier',
     portrait: 'narrator',
     voice: 'narrator',
-    text: '« Refuge du Col — 2 640 m. Silence respecté, étoiles garanties. La vieille Lanterne veille juste au nord. »',
+    text: '« Refuge du Bas : 1 280 m — Col Silencieux : 2 680 m. Astuce : utilisez le Pas Rapide (Esquive) pour franchir les passages venteux. »',
   },
 
-  // === BARNABÉ (Ibex existentiel) ===
-  barnabe_intro: {
-    id: 'barnabe_intro',
-    speaker: 'Barnabé',
-    portrait: 'ibex',
-    voice: 'ibex',
-    text: '*Bêêê...* Pardon, petit marcheur. Si un bouquetin médite au milieu du sentier enneigé... est-il vraiment un obstacle, ou juste une question à cornes ?',
+  // === ACTE II : LYNX BORÉAL & CERF DES BRUMES ===
+  lynx_intro: {
+    id: 'lynx_intro',
+    speaker: 'Lynx Boréal',
+    portrait: 'lynx',
+    voice: 'lynx',
+    text: '*Grrr-mrr...* Le grand félin bat de la queue nerveusement. Chaque note stridente venue du sommet fait trembler ses moustaches.',
     choices: [
       {
-        label: 'Écouter son dilemme',
-        nextNodeId: 'barnabe_listen',
+        label: 'Apaiser le Lynx (Rencontre)',
+        startPacify: 'lynx_boreal',
       },
       {
-        label: 'Offrir la Boussole Égarée',
-        requiredItem: 'compass',
-        consumeItem: true,
-        nextNodeId: 'barnabe_gift_compass',
+        label: 'Citer les notes de Léo',
+        condition: { minNotes: 2 },
+        nextNodeId: 'lynx_note_calm',
       },
       {
-        label: 'Apaiser par la présence',
-        startPacify: 'barnabe',
-      },
-      {
-        label: 'Contourner prudemment',
-        nextNodeId: 'barnabe_bypass',
+        label: 'Se glisser hors de sa vue',
+        nextNodeId: 'lynx_bypass',
       },
     ],
   },
-  barnabe_listen: {
-    id: 'barnabe_listen',
-    speaker: 'Barnabé',
-    portrait: 'ibex',
-    voice: 'ibex',
-    text: "Depuis ce matin, j'ai perdu le sens du Nord... et un peu le sens de la vie. Mes sabots gèlent pendant que mon esprit divague dans la poudreuse.",
-    choices: [
-      {
-        label: 'Apaiser ses doutes (Flamme)',
-        startPacify: 'barnabe',
-      },
-      {
-        label: 'Offrir la Boussole Égarée',
-        requiredItem: 'compass',
-        consumeItem: true,
-        nextNodeId: 'barnabe_gift_compass',
-      },
-      {
-        label: 'Continuer sans insister',
-        nextNodeId: 'barnabe_bypass',
-      },
-    ],
+  lynx_note_calm: {
+    id: 'lynx_note_calm',
+    speaker: 'Lynx Boréal',
+    portrait: 'lynx',
+    voice: 'lynx',
+    text: 'Vous fredonnez doucement l’accord décrit dans le carnet de Léo. Le Lynx cligne lentement des yeux... puis s’efface dans la neige avec respect.',
+    grantPacify: 'lynx_boreal',
+    setFlag: 'resolved_lynx_boreal',
   },
-  barnabe_gift_compass: {
-    id: 'barnabe_gift_compass',
-    speaker: 'Barnabé',
-    portrait: 'ibex',
-    voice: 'ibex',
-    text: 'Oh ! Une vraie boussole en laiton ! Regarde comme l’aiguille frétille... Vers le haut, ou peut-être vers une raclette céleste. Tu as sauvé ma soirée !',
-    grantBefriend: 'barnabe',
-    nextNodeId: 'barnabe_joined',
+  lynx_pacified: {
+    id: 'lynx_pacified',
+    speaker: 'Lynx Boréal',
+    portrait: 'lynx',
+    voice: 'lynx',
+    text: '*Prrr...* La respiration du félin s’accorde au battement de votre cloche. Il libère le sentier et s’installe sur le côté pour veiller.',
+    grantPacify: 'lynx_boreal',
+    setFlag: 'resolved_lynx_boreal',
   },
-  barnabe_pacify_win: {
-    id: 'barnabe_pacify_win',
-    speaker: 'Barnabé',
-    portrait: 'ibex',
-    voice: 'ibex',
-    text: "Ton calme a dissipé le blizzard dans ma tête. Finalement, le sens du sentier... c'est simplement d'avancer avec de bons amis.",
-    grantBefriend: 'barnabe',
-    nextNodeId: 'barnabe_joined',
-  },
-  barnabe_joined: {
-    id: 'barnabe_joined',
-    speaker: 'Barnabé',
-    portrait: 'ibex',
-    voice: 'ibex',
-    text: 'Je te laisse la voie libre, compagnon. Qui sait ? On se retrouvera peut-être tout en haut, si mes genoux acceptent le dénivelé.',
-  },
-  barnabe_bypass: {
-    id: 'barnabe_bypass',
-    speaker: 'Barnabé',
-    portrait: 'ibex',
-    voice: 'ibex',
-    text: 'Tu es pressé ? Je comprends... Les humains ont toujours un col à gravir. Passe donc, je continue d’interroger ce caillou.',
-    setFlag: 'bypassed_barnabe',
-  },
-  barnabe_after_befriend: {
-    id: 'barnabe_after_befriend',
-    speaker: 'Barnabé',
-    portrait: 'ibex',
-    voice: 'ibex',
-    text: 'Bonne ascension, petit marcheur ! Garde ta lanterne bien au chaud près du cœur.',
-  },
-  barnabe_after_bypass: {
-    id: 'barnabe_after_bypass',
-    speaker: 'Barnabé',
-    portrait: 'ibex',
-    voice: 'ibex',
-    text: 'Ce caillou reste étrangement silencieux. Fais attention sur le Pont de Brume plus haut.',
-  },
-
-  // === CABINE N°4 (Télécabine anxieuse) ===
-  cabine4_intro: {
-    id: 'cabine4_intro',
-    speaker: 'Cabine N°4',
-    portrait: 'cablecar',
-    voice: 'cablecar',
-    text: '*Ksshh-clong...* N-n’approche pas du vide ! Je suis à la retraite depuis 1998, je n’ai plus les câbles pour ce genre de précipice !',
-    choices: [
-      {
-        label: 'Rassurer la télécabine',
-        nextNodeId: 'cabine4_listen',
-      },
-      {
-        label: 'Offrir le Thermos de Tisane',
-        requiredItem: 'thermos',
-        consumeItem: true,
-        nextNodeId: 'cabine4_gift_thermos',
-      },
-      {
-        label: 'Apaiser son vertige',
-        startPacify: 'cabine4',
-      },
-      {
-        label: 'Passer discrètement',
-        nextNodeId: 'cabine4_bypass',
-      },
-    ],
-  },
-  cabine4_listen: {
-    id: 'cabine4_listen',
-    speaker: 'Cabine N°4',
-    portrait: 'cablecar',
-    voice: 'cablecar',
-    text: "Avant, je glissais fièrement au-dessus des sapins. Aujourd’hui, le moindre courant d'air me fait claquer des boulons... Le pont grince tellement !",
-    choices: [
-      {
-        label: 'Stabiliser son cœur (Flamme)',
-        startPacify: 'cabine4',
-      },
-      {
-        label: 'Offrir le Thermos de Tisane',
-        requiredItem: 'thermos',
-        consumeItem: true,
-        nextNodeId: 'cabine4_gift_thermos',
-      },
-      {
-        label: 'La laisser souffler',
-        nextNodeId: 'cabine4_bypass',
-      },
-    ],
-  },
-  cabine4_gift_thermos: {
-    id: 'cabine4_gift_thermos',
-    speaker: 'Cabine N°4',
-    portrait: 'cablecar',
-    voice: 'cablecar',
-    text: '*Glou-clink !* Du génépi bien chaud ?! Ma vieille tôle en frémit de bonheur ! Je ne tremble plus du tout. Traverse le pont en paix, petit voyageur.',
-    grantBefriend: 'cabine4',
-    nextNodeId: 'cabine4_joined',
-  },
-  cabine4_pacify_win: {
-    id: 'cabine4_pacify_win',
-    speaker: 'Cabine N°4',
-    portrait: 'cablecar',
-    voice: 'cablecar',
-    text: '*Bip doux...* Comme c’est étrange. Quand je regarde ta petite flamme plutôt que l’abîme, la montagne paraît presque tendre. Merci !',
-    grantBefriend: 'cabine4',
-    nextNodeId: 'cabine4_joined',
-  },
-  cabine4_joined: {
-    id: 'cabine4_joined',
-    speaker: 'Cabine N°4',
-    portrait: 'cablecar',
-    voice: 'cablecar',
-    text: 'Je me gare sur le côté pour te laisser passer. Si jamais un câble imaginaire monte jusqu’au refuge, je tenterai le voyage !',
-  },
-  cabine4_bypass: {
-    id: 'cabine4_bypass',
-    speaker: 'Cabine N°4',
-    portrait: 'cablecar',
-    voice: 'cablecar',
-    text: '*Clong...* File donc sur les planches si tu l’oses. Moi, je vais compter mes rivets en fermant les volets.',
-    setFlag: 'bypassed_cabine4',
-  },
-  cabine4_after_befriend: {
-    id: 'cabine4_after_befriend',
-    speaker: 'Cabine N°4',
-    portrait: 'cablecar',
-    voice: 'cablecar',
-    text: 'Mes boulons n’ont jamais été aussi sereins. Bon courage pour la fin de la montée !',
-  },
-  cabine4_after_bypass: {
-    id: 'cabine4_after_bypass',
-    speaker: 'Cabine N°4',
-    portrait: 'cablecar',
-    voice: 'cablecar',
-    text: 'Le vent souffle toujours fort dans le ravin... Fais bien attention où tu poses tes bottes.',
-  },
-
-  // === L'ÉCHO DU BROUILLARD (Esprit timide) ===
-  spirit_intro: {
-    id: 'spirit_intro',
-    speaker: "L'Écho du Brouillard",
-    portrait: 'spirit',
-    voice: 'spirit',
-    text: '...oh. Des pas dans la poudreuse. Chut... Tu viens aussi chercher les petites choses que les randonneurs oublient dans le brouillard ?',
-    choices: [
-      {
-        label: 'Écouter son murmure',
-        nextNodeId: 'spirit_listen',
-      },
-      {
-        label: 'Offrir la Flûte en Bois',
-        requiredItem: 'flute',
-        consumeItem: true,
-        nextNodeId: 'spirit_gift_flute',
-      },
-      {
-        label: 'Apaiser en musique',
-        startPacify: 'echo_brouillard',
-      },
-      {
-        label: 'Saluer et continuer',
-        nextNodeId: 'spirit_bypass',
-      },
-    ],
-  },
-  spirit_listen: {
-    id: 'spirit_listen',
-    speaker: "L'Écho du Brouillard",
-    portrait: 'spirit',
-    voice: 'spirit',
-    text: 'Je garde les écharpes égarées, les rires étouffés et les mélodies inachevées. Mais la nuit est si silencieuse ici que j’en oublie ma propre voix...',
-    choices: [
-      {
-        label: 'Recueillir ses notes (Flamme)',
-        startPacify: 'echo_brouillard',
-      },
-      {
-        label: 'Offrir la Flûte en Bois',
-        requiredItem: 'flute',
-        consumeItem: true,
-        nextNodeId: 'spirit_gift_flute',
-      },
-      {
-        label: 'Monter vers le col',
-        nextNodeId: 'spirit_bypass',
-      },
-    ],
-  },
-  spirit_gift_flute: {
-    id: 'spirit_gift_flute',
-    speaker: "L'Écho du Brouillard",
-    portrait: 'spirit',
-    voice: 'spirit',
-    text: 'Une flûte de mélèze... *Fiiiuu...* Entends-tu comme la brume répond à son chant ? Je n’ai plus peur du silence. Monte vers le refuge, ami.',
-    grantBefriend: 'echo_brouillard',
-    nextNodeId: 'spirit_joined',
-  },
-  spirit_pacify_win: {
-    id: 'spirit_pacify_win',
-    speaker: "L'Écho du Brouillard",
-    portrait: 'spirit',
-    voice: 'spirit',
-    text: 'Tu as attrapé chaque note dispersée dans le vent... Merci. La brume s’écarte volontiers devant quelqu’un qui sait écouter.',
-    grantBefriend: 'echo_brouillard',
-    nextNodeId: 'spirit_joined',
-  },
-  spirit_joined: {
-    id: 'spirit_joined',
-    speaker: "L'Écho du Brouillard",
-    portrait: 'spirit',
-    voice: 'spirit',
-    text: 'La Lanterne du Col t’attend tout en haut, à 2 640 mètres. Je soufflerai une brise douce dans ton dos.',
-  },
-  spirit_bypass: {
-    id: 'spirit_bypass',
-    speaker: "L'Écho du Brouillard",
-    portrait: 'spirit',
-    voice: 'spirit',
-    text: '...je comprends. Le sommet appelle. Je me fais tout petit contre le rocher pour te laisser monter.',
-    setFlag: 'bypassed_echo_brouillard',
-  },
-  spirit_after_befriend: {
-    id: 'spirit_after_befriend',
-    speaker: "L'Écho du Brouillard",
-    portrait: 'spirit',
-    voice: 'spirit',
-    text: 'La montagne fredonne encore notre chanson. Va réveiller la Lanterne du Col.',
-  },
-  spirit_after_bypass: {
-    id: 'spirit_after_bypass',
-    speaker: "L'Écho du Brouillard",
-    portrait: 'spirit',
-    voice: 'spirit',
-    text: '...la brume reste épaisse ce soir. Bonne route jusqu’au refuge.',
-  },
-
-  // === LA LANTERNE DU COL (Sanctuaire final) ===
-  lantern_intro: {
-    id: 'lantern_intro',
-    speaker: 'La Lanterne du Col',
-    portrait: 'lantern',
-    voice: 'lantern',
-    text: 'À 2 640 mètres d’altitude, une ancienne lanterne sommeille sous un voile de givre. Son verre reflète les étoiles et demande un cœur paisible.',
-    choices: [
-      {
-        label: 'Accorder sa flamme (Éveiller)',
-        startPacify: 'lanterne_col',
-      },
-      {
-        label: 'Observer la nuit en silence',
-        nextNodeId: 'lantern_observe',
-      },
-    ],
-  },
-  lantern_observe: {
-    id: 'lantern_observe',
+  lynx_bypass: {
+    id: 'lynx_bypass',
     speaker: 'Narrateur',
     portrait: 'narrator',
     voice: 'narrator',
-    text: 'Tout autour du col, les sommets semblent retenir leur souffle. Lorsque vous serez prêt, il suffira d’approcher votre flamme.',
+    text: 'Vous profitez d’un instant où le lynx scrute la cime des sapins pour vous faufiler au-delà de son rocher.',
+    setFlag: 'resolved_lynx_boreal',
   },
-  lantern_pacify_win: {
-    id: 'lantern_pacify_win',
-    speaker: 'La Lanterne du Col',
-    portrait: 'lantern',
-    voice: 'lantern',
-    text: 'Une chaleur dorée embrase doucement le col tout entier. La montagne reconnaît votre patience et répond à votre écho.',
-    grantBefriend: 'lanterne_col',
+  lynx_after: {
+    id: 'lynx_after',
+    speaker: 'Lynx Boréal',
+    portrait: 'lynx',
+    voice: 'lynx',
+    text: 'Le grand félin observe votre montée d’un regard paisible.',
+  },
+
+  cerf_intro: {
+    id: 'cerf_intro',
+    speaker: 'Cerf des Brumes',
+    portrait: 'cerf',
+    voice: 'cerf',
+    text: 'Ses bois semblent accrocher des lambeaux de brouillard. Il bloque l’escalier menant vers la crête, effrayé par les échos.',
+    choices: [
+      {
+        label: 'Apaiser le Cerf (Rencontre)',
+        startPacify: 'cerf_brumes',
+      },
+      {
+        label: 'Montrer que les cairns sont debout',
+        condition: { minCairns: 2 },
+        nextNodeId: 'cerf_cairns_calm',
+      },
+      {
+        label: 'Contourner dans le brouillard',
+        nextNodeId: 'cerf_bypass',
+      },
+    ],
+  },
+  cerf_cairns_calm: {
+    id: 'cerf_cairns_calm',
+    speaker: 'Cerf des Brumes',
+    portrait: 'cerf',
+    voice: 'cerf',
+    text: 'En sentant le brouillard dissipé par vos cairns, le Cerf abaisse majestueusement ses bois et vous salue avant de libérer le passage.',
+    grantPacify: 'cerf_brumes',
+    setFlag: 'resolved_cerf_brumes',
+  },
+  cerf_pacified: {
+    id: 'cerf_pacified',
+    speaker: 'Cerf des Brumes',
+    portrait: 'cerf',
+    voice: 'cerf',
+    text: 'Un souffle calme enveloppe la clairière. Le Cerf des Brumes s’incline doucement et s’écarte du passage vers la crête.',
+    grantPacify: 'cerf_brumes',
+    setFlag: 'resolved_cerf_brumes',
+  },
+  cerf_bypass: {
+    id: 'cerf_bypass',
+    speaker: 'Narrateur',
+    portrait: 'narrator',
+    voice: 'narrator',
+    text: 'Sans bruit, vous longez la paroi rocheuse pour laisser le cerf seul dans sa brume.',
+    setFlag: 'resolved_cerf_brumes',
+  },
+  cerf_after: {
+    id: 'cerf_after',
+    speaker: 'Cerf des Brumes',
+    portrait: 'cerf',
+    voice: 'cerf',
+    text: 'Le Cerf veille calmement au pied de l’escalier de pierre.',
+  },
+
+  // === ACTE III : SOREN & GYPAÈTE ===
+  soren_intro: {
+    id: 'soren_intro',
+    speaker: 'Soren',
+    portrait: 'soren',
+    voice: 'soren',
+    text: '*Brrr...* Salut, l’alpiniste ! Je suis Soren. Je suivais le vol du Gypaète quand ces rafales ont bloqué la passerelle. Mes doigts sont gelés...',
+    setFlag: 'met_soren',
+    choices: [
+      {
+        label: "Offrir des Baies d'églantier",
+        condition: { hasItem: 'baies_eglantier' },
+        consumeItem: 'baies_eglantier',
+        grantItem: 'corde_alpiniste',
+        setFlag: 'helped_soren',
+        nextNodeId: 'soren_gifted',
+      },
+      {
+        label: 'Demander des infos sur Léo',
+        nextNodeId: 'soren_leo_info',
+      },
+      {
+        label: 'Courage, je trace la voie',
+      },
+    ],
+  },
+  soren_gifted: {
+    id: 'soren_gifted',
+    speaker: 'Soren',
+    portrait: 'soren',
+    voice: 'soren',
+    text: 'Des baies d’églantier ? C’est un festin royal à 2 200 mètres ! Tiens, prends ma Corde d’alpiniste : ses nœuds t’aideront à garder le rythme face aux créatures et au Monolithe.',
+  },
+  soren_leo_info: {
+    id: 'soren_leo_info',
+    speaker: 'Soren',
+    portrait: 'soren',
+    voice: 'soren',
+    text: 'Léo est passé ici hier soir, carnet en main. Il m’a crié de rester à l’abri des rochers pendant les bourrasques et d’utiliser le Pas Rapide entre deux abris !',
+  },
+  soren_after: {
+    id: 'soren_after',
+    speaker: 'Soren',
+    portrait: 'soren',
+    voice: 'soren',
+    text: 'Observe bien les stries blanches dans l’air avant chaque rafale. Le Gypaète attend juste au nord du pont.',
+    choices: [
+      {
+        label: "Offrir des Baies d'églantier",
+        condition: { hasItem: 'baies_eglantier', notFlag: 'helped_soren' },
+        consumeItem: 'baies_eglantier',
+        grantItem: 'corde_alpiniste',
+        setFlag: 'helped_soren',
+        nextNodeId: 'soren_gifted',
+      },
+      {
+        label: 'Bonne garde, Soren',
+      },
+    ],
+  },
+
+  gypaete_intro: {
+    id: 'gypaete_intro',
+    speaker: 'Gypaète des Cimes',
+    portrait: 'gypaete',
+    voice: 'gypaete',
+    text: 'Ses immenses ailes fendent le vent au-dessus de la corde menant au sanctuaire. Le vent semble répondre à chacun de ses battements.',
+    choices: [
+      {
+        label: 'Apaiser le Gypaète (Rencontre)',
+        startPacify: 'gypaete_cimes',
+      },
+      {
+        label: 'Fendre la brise (Esquive)',
+        nextNodeId: 'gypaete_bypass',
+      },
+    ],
+  },
+  gypaete_pacified: {
+    id: 'gypaete_pacified',
+    speaker: 'Gypaète des Cimes',
+    portrait: 'gypaete',
+    voice: 'gypaete',
+    text: 'Le rapace pousse un cri clair et posé, replie ses ailes sur le promontoire voisin et laisse la corde d’ascension libre.',
+    grantPacify: 'gypaete_cimes',
+    setFlag: 'resolved_gypaete_cimes',
+  },
+  gypaete_bypass: {
+    id: 'gypaete_bypass',
+    speaker: 'Narrateur',
+    portrait: 'narrator',
+    voice: 'narrator',
+    text: 'Dans un éclair d’agilité, vous passez sous son ombre et attrapez le piton menant au Col Silencieux.',
+    setFlag: 'resolved_gypaete_cimes',
+  },
+  gypaete_after: {
+    id: 'gypaete_after',
+    speaker: 'Gypaète des Cimes',
+    portrait: 'gypaete',
+    voice: 'gypaete',
+    text: 'Le grand rapace plane paisiblement près des cimes.',
+  },
+
+  // === ACTE IV : LÉO & MONOLITHE RÉSONANT ===
+  leo_intro: {
+    id: 'leo_intro',
+    speaker: 'Léo',
+    portrait: 'leo',
+    voice: 'leo',
+    text: 'Maren t’a envoyé ?! Tu tiens sa Cloche fêlée ! Je n’arrivais plus à calmer le Monolithe seul... Le givre étouffe ses harmoniques.',
+    setFlag: 'met_leo',
+    choices: [
+      {
+        label: 'Je rapporte tes pages du carnet',
+        condition: { minNotes: 3 },
+        grantItem: 'page_carnet_liee',
+        nextNodeId: 'leo_give_accord',
+      },
+      {
+        label: 'Nous allons le réaccorder ensemble',
+        grantItem: 'page_carnet_liee',
+        nextNodeId: 'leo_ready',
+      },
+    ],
+  },
+  leo_give_accord: {
+    id: 'leo_give_accord',
+    speaker: 'Léo',
+    portrait: 'leo',
+    voice: 'leo',
+    text: 'Tu as retrouvé mon carnet ! Prends ce dernier feuillet : l’Accord du Monolithe. Approche-toi du sanctuaire au nord et fais vibrer ta cloche.',
+  },
+  leo_ready: {
+    id: 'leo_ready',
+    speaker: 'Léo',
+    portrait: 'leo',
+    voice: 'leo',
+    text: 'Prends ce feuillet d’accord que j’ai noté. Le Monolithe t’attend juste au nord. Courage !',
+  },
+  leo_after: {
+    id: 'leo_after',
+    speaker: 'Léo',
+    portrait: 'leo',
+    voice: 'leo',
+    text: 'Le Monolithe Résonant brille au centre de la terrasse glacée. Dès que tu es prêt, accorde-le !',
+  },
+
+  monolith_intro: {
+    id: 'monolith_intro',
+    speaker: 'Monolithe Résonant',
+    portrait: 'monolith',
+    voice: 'monolith',
+    text: 'À 2 680 mètres, le pilier de quartz vibre d’un bourdonnement sourd. Des cristaux de givre enserrent sa base.',
+    choices: [
+      {
+        label: 'Réaccorder le Monolithe (Rencontre)',
+        startPacify: 'monolithe_resonant',
+      },
+      {
+        label: 'Contempler l’horizon',
+      },
+    ],
+  },
+  monolith_awakened: {
+    id: 'monolith_awakened',
+    speaker: 'Monolithe Résonant',
+    portrait: 'monolith',
+    voice: 'monolith',
+    text: 'La glace cède en un accord pur et chaleureux. La note se propage de crête en vallée comme une promesse d’aube.',
+    grantPacify: 'monolithe_resonant',
+    setFlag: 'monolith_awakened',
     triggerEnding: true,
   },
 };
 
-export function buildCampfireDialogue(
-  zoneId: ZoneId,
-  save: SaveData
+export function buildCampfireReflection(
+  actId: ActId,
+  save: SaveDataV2
 ): { speaker: string; text: string } {
-  const befriended = new Set<NpcId>(save.befriendedIds);
-  const trailFriendsCount = (
-    ['barnabe', 'cabine4', 'echo_brouillard'] as NpcId[]
-  ).filter((id) => befriended.has(id)).length;
-
-  if (zoneId === 'forest') {
-    if (befriended.has('barnabe')) {
-      return {
-        speaker: 'Feu de la Clairière',
-        text: "Le feu crépite sous les sapins givrés. Barnabé vous salue d'un clin d'œil philosophique depuis les fourrés. (Lanternes ravivées — Partie sauvegardée.)",
-      };
-    }
+  if (actId === 1) {
     return {
-      speaker: 'Feu de la Clairière',
-      text: "La résine brûle doucement et réchauffe vos moufles. L'air sent la neige fraîche et l'aventure. (Lanternes ravivées — Partie sauvegardée.)",
+      speaker: 'Feu du Refuge',
+      text: save.storyFlags.met_maren
+        ? 'Les braises réchauffent la cloche de la vieille gardienne. Calme et endurance restaurés. (Partie sauvegardée.)'
+        : 'Le bois crépite doucement devant la cabane. N’oubliez pas de parler à Maren avant de monter. (Partie sauvegardée.)',
     };
   }
-
-  if (zoneId === 'bridge') {
-    if (befriended.has('cabine4') && befriended.has('echo_brouillard')) {
-      return {
-        speaker: 'Bivouac du Ravin',
-        text: "Les braises chantent en harmonie avec le ravin. Une cabine rassurée et un esprit apaisé veillent sur le pont. (Partie sauvegardée.)",
-      };
-    }
-    if (befriended.has('cabine4')) {
-      return {
-        speaker: 'Bivouac du Ravin',
-        text: "Au bord de la brume, Cabine N°4 fredonne doucement près du feu. Le vide semble soudain moins vertigineux. (Partie sauvegardée.)",
-      };
-    }
+  if (actId === 2) {
     return {
-      speaker: 'Bivouac du Ravin',
-      text: "Malgré le vent d'altitude, ces braises tiennent bon face au brouillard. Prenez le temps de respirer. (Partie sauvegardée.)",
+      speaker: 'Bivouac des Sapins',
+      text: `Au milieu des pins, le feu tient la brume à distance. Cairns rebâtis : ${save.rebuiltCairns.length}/3. Calme et endurance restaurés. (Partie sauvegardée.)`,
     };
   }
-
-  if (trailFriendsCount === 3) {
+  if (actId === 3) {
     return {
-      speaker: 'Âtre du Refuge',
-      text: "À 2 640 mètres, la nuit étoilée s'ouvre devant vous. Chaque rencontre vous a rapproché de cette lumière. (Partie sauvegardée.)",
+      speaker: 'Abri du Vent',
+      text: save.storyFlags.helped_soren
+        ? 'Soren sourit non loin du brasero. L’air des cimes paraît plus doux ce soir. Calme et endurance restaurés. (Partie sauvegardée.)'
+        : 'Le feu danse à l’abri du rocher malgré les bourrasques d’altitude. Calme et endurance restaurés. (Partie sauvegardée.)',
     };
   }
-
   return {
-    speaker: 'Âtre du Refuge',
-    text: "Le silence du col est immense, presque solennel. Le refuge vous offre sa dernière étincelle avant la Lanterne. (Partie sauvegardée.)",
+    speaker: 'Foyer du Col',
+    text: `À 2 680 mètres, vous avez déjà recueilli ${save.collectedNotes.length}/6 notes de Léo. Calme et endurance restaurés. (Partie sauvegardée.)`,
   };
 }

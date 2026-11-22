@@ -1,7 +1,7 @@
 {
   "name": "L'Écho du Col",
   "short_name": "Écho du Col",
-  "description": "Aventure narrative alpine en pixel-art, poétique et pacifiste.",
+  "description": "Aventure narrative alpine en pixel-art en 4 actes, poétique et pacifiste.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",

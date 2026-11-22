@@ -1,19 +1,33 @@
 import { describe, expect, it } from 'vitest';
-import { NPCS, ZONES } from '../../data/mountainWorld';
+import {
+  WORLD_ENTITIES,
+  ZONES,
+  isTileSolid,
+} from '../../data/mountainWorld';
 import {
   DIALOGUE_TREE,
-  buildCampfireDialogue,
+  JOURNAL_NOTES,
+  PACIFY_ENCOUNTERS,
+  computeEndingId,
+  evaluateDialogueCondition,
+  getCurrentObjective,
 } from '../../data/narrativeScript';
 import {
-  ARENA_HEIGHT,
-  ARENA_WIDTH,
+  RESONANCE_TARGET_RADIUS,
+  SOUFFLE_SERENE_MAX,
+  SOUFFLE_SERENE_MIN,
+  applyPacifyItem,
   createPacifyState,
-  setSoulTarget,
+  setSouffleHolding,
   stepPacifyState,
+  switchPacifyMode,
+  triggerResonanceTap,
 } from '../PacifyMiniGameEngine';
 import {
-  SAVE_STORAGE_KEY,
-  applyDialogueEffects,
+  LEGACY_SAVE_STORAGE_KEY_V1,
+  SAVE_STORAGE_KEY_V2,
+  addInventoryItem,
+  applyNarrativeEffects,
   createFreshSave,
   loadSaveFromStorage,
   parseSave,
@@ -21,248 +35,264 @@ import {
   writeSaveToStorage,
 } from '../SaveManager';
 import {
+  DASH_STAMINA_COST,
   canOccupyPosition,
-  checkZoneTransition,
-  findInteractableInFront,
-  movePlayer,
+  createBellPulse,
+  scanProximityInteractable,
+  stepPlayerPhysics,
+  triggerDash,
 } from '../WorldEngine';
 import { PlayerState } from '../../types/game';
 
-describe('WorldEngine collision, movement, and interaction', () => {
-  it('blocks solid tiles (trees, rocks, chasms, cliffs) and allows walkable snow/path/bridge', () => {
-    const save = createFreshSave();
+function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
+  return {
+    actId: 1,
+    x: 9.5,
+    y: 15.5,
+    vx: 0,
+    vy: 0,
+    direction: 'up',
+    isMoving: false,
+    animFrame: 0,
+    animTimer: 0,
+    footstepTimer: 0,
+    stamina: 100,
+    staminaCooldown: 0,
+    dashTimer: 0,
+    dashDirX: 0,
+    dashDirY: -1,
+    calm: 100,
+    ...overrides,
+  };
+}
 
-    // Forest row 17 is all trees -> blocked
-    expect(canOccupyPosition('forest', 7.5, 17.5, save)).toBe(false);
-    // Forest spawn (7.5, 15.5) is walkable path
-    expect(canOccupyPosition('forest', 7.5, 15.5, save)).toBe(true);
-    // Bridge chasm at (2.5, 7.5) is blocked, bridge plank at (7.5, 7.5) is walkable
-    expect(canOccupyPosition('bridge', 2.5, 7.5, save)).toBe(false);
-    expect(canOccupyPosition('bridge', 7.5, 7.5, save)).toBe(true);
+describe('WorldEngine physics, 5px corner-sliding, Dash, and 44px scanner', () => {
+  it('enforces AABB collision and clears Act II mist walls when cairns are rebuilt', () => {
+    const save = createFreshSave();
+    expect(canOccupyPosition(1, 9.5, 19.5, save)).toBe(false);
+    expect(canOccupyPosition(1, 9.5, 15.5, save)).toBe(true);
+
+    // Act II mist at (3, 11) is solid until cairn_1 is rebuilt
+    expect(isTileSolid('mist', 3, 11, 2, save.rebuiltCairns)).toBe(true);
+    expect(canOccupyPosition(2, 3.5, 11.5, save)).toBe(false);
+
+    const withCairn1 = { ...save, rebuiltCairns: ['cairn_1'] };
+    expect(isTileSolid('mist', 3, 11, 2, withCairn1.rebuiltCairns)).toBe(false);
+    expect(canOccupyPosition(2, 3.5, 11.5, withCairn1)).toBe(true);
   });
 
-  it('blocks the narrow forest pass while Barnabé is unresolved and opens it once befriended', () => {
-    const save = createFreshSave();
-    // Barnabé stands at (7, 3) flanked by rocks at (6, 3) and (8, 3)
-    expect(canOccupyPosition('forest', 7.5, 3.5, save)).toBe(false);
-
-    const befriendedSave = applyDialogueEffects(save, {
-      grantBefriend: 'barnabe',
+  it('slides smoothly perpendicular when clipping within 5px of an obstacle corner', () => {
+    const save = applyNarrativeEffects(createFreshSave(), {
+      setFlag: 'resolved_lynx_boreal',
     });
-    // Barnabé stepped aside to (6, 4), so (7.5, 3.5) is now clear
-    expect(canOccupyPosition('forest', 7.5, 3.5, befriendedSave)).toBe(true);
-    expect(canOccupyPosition('forest', 6.5, 4.5, befriendedSave)).toBe(false);
-  });
-
-  it('provides corner-sliding forgiveness when walking slightly off-center into a 1-tile pass', () => {
-    const save = applyDialogueEffects(createFreshSave(), {
-      setFlag: 'bypassed_barnabe',
+    // Act II row 7: col 8 is rock, col 9 is open path, col 10 is rock.
+    // Player at x = 9.08 walking straight up has left edge 9.08 - 0.27 = 8.81 (clips col 8 rock by ~3px <= 5px!)
+    const player = makePlayer({
+      actId: 2,
+      x: 9.08,
+      y: 8.15,
+      direction: 'up',
+      vy: -4.2,
     });
-    const player: PlayerState = {
-      zoneId: 'forest',
-      x: 7.12, // Slightly clipped on left rock edge at col 6
-      y: 4.1,
-      direction: 'up',
-      isMoving: false,
-      animFrame: 0,
-      animTimer: 0,
-    };
 
-    const next = movePlayer(player, 0, -1, 0.05, save);
-    expect(next.x).toBeGreaterThan(player.x);
+    const res = stepPlayerPhysics(player, 0, -1, 0.04, save);
+    expect(res.player.x).toBeGreaterThan(player.x);
+    expect(res.player.y).toBeLessThan(player.y);
   });
 
-  it('detects campfire and NPCs in front of the player and triggers zone transitions', () => {
+  it('performs Dash burst (2.3x), depletes 35 stamina, and regenerates after cooldown', () => {
     const save = createFreshSave();
-    const nearFire: PlayerState = {
-      zoneId: 'forest',
-      x: 6.1,
-      y: 14.5,
-      direction: 'left',
-      isMoving: false,
-      animFrame: 0,
-      animTimer: 0,
-    };
-    const fireTarget = findInteractableInFront(nearFire, save);
-    expect(fireTarget?.kind).toBe('object');
-    if (fireTarget?.kind === 'object') {
-      expect(fireTarget.object.type).toBe('campfire');
-    }
+    const startPlayer = makePlayer({ actId: 1, x: 9.5, y: 15.5 });
+    const dashInit = triggerDash(startPlayer, 0, -1);
 
-    const nearBarnabe: PlayerState = {
-      zoneId: 'forest',
-      x: 7.5,
-      y: 4.3,
-      direction: 'up',
-      isMoving: false,
-      animFrame: 0,
-      animTimer: 0,
-    };
-    const npcTarget = findInteractableInFront(nearBarnabe, save);
-    expect(npcTarget?.kind).toBe('npc');
-    if (npcTarget?.kind === 'npc') {
-      expect(npcTarget.npc.id).toBe('barnabe');
-    }
+    expect(dashInit.dashed).toBe(true);
+    expect(dashInit.player.stamina).toBe(100 - DASH_STAMINA_COST);
+    expect(dashInit.player.dashTimer).toBeCloseTo(0.18, 2);
 
-    const atTopExit: PlayerState = {
-      zoneId: 'forest',
-      x: 7.5,
-      y: 0.4,
+    const stepDash = stepPlayerPhysics(dashInit.player, 0, -1, 0.04, save);
+    expect(Math.abs(stepDash.player.vy)).toBeGreaterThan(9.0);
+    expect(stepDash.spawnedDust.length).toBeGreaterThan(0);
+
+    // Advance past dash (0.18s) and cooldown (0.4s) to verify stamina regen
+    let p = stepDash.player;
+    for (let i = 0; i < 20; i++) {
+      p = stepPlayerPhysics(p, 0, 0, 0.05, save).player;
+    }
+    expect(p.stamina).toBeGreaterThan(100 - DASH_STAMINA_COST);
+  });
+
+  it('scans interactables within 44px radius and exposes contextual verbs', () => {
+    const save = createFreshSave();
+    const nearMaren = makePlayer({
+      actId: 1,
+      x: 9.5,
+      y: 14.3,
       direction: 'up',
-      isMoving: true,
-      animFrame: 0,
-      animTimer: 0,
-    };
-    const tr = checkZoneTransition(atTopExit);
-    expect(tr?.targetZone).toBe('bridge');
+    });
+    const marenTarget = scanProximityInteractable(nearMaren, save);
+    expect(marenTarget?.entity.id).toBe('npc_maren');
+    expect(marenTarget?.verb).toBe('Parler');
+    expect(marenTarget?.distPx).toBeLessThanOrEqual(44);
+
+    const nearCairn = makePlayer({
+      actId: 2,
+      x: 5.5,
+      y: 15.2,
+      direction: 'up',
+    });
+    const cairnTarget = scanProximityInteractable(nearCairn, save);
+    expect(cairnTarget?.entity.id).toBe('cairn_1');
+    expect(cairnTarget?.verb).toBe('Rebâtir');
+
+    const pulse = createBellPulse(nearMaren, save);
+    expect(pulse.hintAngle).not.toBeNull();
   });
 });
 
-describe('Dialogue branching, flags, and campfire SaveManager', () => {
-  it('updates flags, befriended NPCs, and consumes offered items cleanly', () => {
-    const initial = {
-      ...createFreshSave(),
-      inventory: ['compass', 'thermos'] as const,
-    };
-    const save = { ...initial, inventory: [...initial.inventory] };
-
-    const afterGift = applyDialogueEffects(save, {
-      consumeItem: 'compass',
-      grantBefriend: 'barnabe',
-      setFlag: 'met_barnabe',
-    });
-
-    expect(afterGift.inventory).toEqual(['thermos']);
-    expect(afterGift.befriendedIds).toContain('barnabe');
-    expect(afterGift.flags.met_barnabe).toBe(true);
-  });
-
-  it('evolves campfire dialogue based on befriended companions', () => {
-    const baseSave = createFreshSave();
-    const firstMsg = buildCampfireDialogue('forest', baseSave);
-    expect(firstMsg.text).not.toContain('Barnabé');
-
-    const withBarnabe = applyDialogueEffects(baseSave, {
-      grantBefriend: 'barnabe',
-    });
-    const secondMsg = buildCampfireDialogue('forest', withBarnabe);
-    expect(secondMsg.text).toContain('Barnabé');
-  });
-
-  it('serializes, persists, and safely rejects corrupted localStorage saves', () => {
-    const memory = new Map<string, string>();
-    const mockStorage = {
-      getItem: (k: string) => memory.get(k) ?? null,
-      setItem: (k: string, v: string) => {
-        memory.set(k, v);
-      },
-    };
-
-    const save = applyDialogueEffects(
-      {
-        ...createFreshSave(),
-        zoneId: 'bridge',
-        x: 7.5,
-        y: 14.2,
-        inventory: ['flute'],
-        saveCount: 2,
-      },
-      { grantBefriend: 'barnabe' }
-    );
-
-    expect(writeSaveToStorage(save, mockStorage)).toBe(true);
-    const loaded = loadSaveFromStorage(mockStorage);
-    expect(loaded).not.toBeNull();
-    expect(loaded?.zoneId).toBe('bridge');
-    expect(loaded?.befriendedIds).toEqual(['barnabe']);
-    expect(loaded?.inventory).toEqual(['flute']);
-
-    // Corrupted JSON fallback
-    memory.set(SAVE_STORAGE_KEY, '{broken_json');
-    expect(loadSaveFromStorage(mockStorage)).toBeNull();
-    expect(parseSave(serializeSave({ ...save, version: 99 as unknown as 1 }))).toBeNull();
-  });
-
-  it('verifies all map rows are 16x18 and every NPC dialogue reference exists', () => {
-    for (const zone of Object.values(ZONES)) {
-      expect(zone.tiles.length).toBe(18);
-      for (const row of zone.tiles) {
-        expect(row.length).toBe(16);
+describe('4-Act Story, Journal Notes, Endings, and SaveManager v2', () => {
+  it('validates all four 20x20 maps, 6 journal notes, and dialogue node integrity', () => {
+    for (const act of [1, 2, 3, 4] as const) {
+      expect(ZONES[act].tiles.length).toBe(20);
+      for (const row of ZONES[act].tiles) {
+        expect(row.length).toBe(20);
       }
     }
+    expect(JOURNAL_NOTES.length).toBe(6);
 
-    for (const npc of NPCS) {
-      expect(DIALOGUE_TREE[npc.rootNodeId]).toBeDefined();
-      expect(DIALOGUE_TREE[npc.befriendedNodeId]).toBeDefined();
-      expect(DIALOGUE_TREE[npc.bypassedNodeId]).toBeDefined();
-      expect(DIALOGUE_TREE[npc.pacifyConfig.successNodeId]).toBeDefined();
+    for (const entity of WORLD_ENTITIES) {
+      if (entity.rootNodeId) {
+        expect(DIALOGUE_TREE[entity.rootNodeId]).toBeDefined();
+      }
+      if (entity.resolvedNodeId) {
+        expect(DIALOGUE_TREE[entity.resolvedNodeId]).toBeDefined();
+      }
     }
+  });
+
+  it('evaluates conditional dialogue branches, quest objectives, and all 3 endings', () => {
+    const base = createFreshSave();
+    expect(getCurrentObjective(base).id).toBe('obj_maren');
+
+    // Rushed climb -> silence ending
+    expect(computeEndingId(base)).toBe('silence');
+
+    // Partial pacification or >= 2 notes -> echo ending
+    const echoSave = {
+      ...base,
+      collectedNotes: ['note_1', 'note_2'],
+    };
+    expect(computeEndingId(echoSave)).toBe('echo');
+
+    // Full pacification + >= 4 notes -> harmony ending
+    const harmonySave = {
+      ...base,
+      pacifiedCreatures: [
+        'lynx_boreal',
+        'cerf_brumes',
+        'gypaete_cimes',
+      ] as const,
+      collectedNotes: ['note_1', 'note_2', 'note_3', 'note_4'],
+      inventory: addInventoryItem(base.inventory, 'baies_eglantier', 1),
+    };
+    const mutableHarmony = {
+      ...harmonySave,
+      pacifiedCreatures: [...harmonySave.pacifiedCreatures],
+    };
+    expect(computeEndingId(mutableHarmony)).toBe('harmony');
+    expect(
+      evaluateDialogueCondition({ hasItem: 'baies_eglantier' }, mutableHarmony)
+    ).toBe(true);
+    expect(
+      evaluateDialogueCondition({ minNotes: 4 }, mutableHarmony)
+    ).toBe(true);
+  });
+
+  it('round-trips SaveDataV2 in localStorage and migrates/rejects malformed data safely', () => {
+    const storeMap = new Map<string, string>();
+    const storage = {
+      getItem: (k: string) => storeMap.get(k) ?? null,
+      setItem: (k: string, v: string) => {
+        storeMap.set(k, v);
+      },
+    };
+
+    const save = {
+      ...createFreshSave(),
+      actId: 3 as const,
+      playerX: 6.5,
+      playerY: 14.0,
+      rebuiltCairns: ['cairn_1', 'cairn_2'],
+      collectedNotes: ['note_1', 'note_2', 'note_4'],
+      pacifiedCreatures: ['lynx_boreal' as const],
+      inventory: addInventoryItem(
+        addInventoryItem([], 'cloche_felee', 1),
+        'baies_eglantier',
+        2
+      ),
+      storyFlags: { met_maren: true },
+      saveCount: 3,
+    };
+
+    expect(writeSaveToStorage(save, storage)).toBe(true);
+    const loaded = loadSaveFromStorage(storage);
+    expect(loaded).not.toBeNull();
+    expect(loaded?.actId).toBe(3);
+    expect(loaded?.rebuiltCairns).toEqual(['cairn_1', 'cairn_2']);
+    expect(loaded?.collectedNotes).toHaveLength(3);
+    expect(loaded?.inventory).toHaveLength(2);
+
+    // Corrupted v2 data returns null
+    storeMap.set(SAVE_STORAGE_KEY_V2, '{corrupted');
+    expect(loadSaveFromStorage(storage)).toBeNull();
+
+    // Legacy v1 migration check
+    storeMap.delete(SAVE_STORAGE_KEY_V2);
+    storeMap.set(
+      LEGACY_SAVE_STORAGE_KEY_V1,
+      JSON.stringify({ version: 1, zoneId: 'bridge', saveCount: 2 })
+    );
+    const migrated = loadSaveFromStorage(storage);
+    expect(migrated?.version).toBe(2);
+    expect(migrated?.actId).toBe(2);
+
+    expect(parseSave(serializeSave({ ...save, version: 99 as unknown as 2 }))).toBeNull();
   });
 });
 
-describe('PacifyMiniGameEngine mechanics', () => {
-  it('progresses dodge_wind mode to completion without game-over on hits', () => {
-    const barnabe = NPCS.find((n) => n.id === 'barnabe')!;
-    const state = createPacifyState(barnabe.pacifyConfig);
-    state.invulnTimer = 0;
+describe('PacifyMiniGameEngine multi-mechanic encounters', () => {
+  it('supports Résonance tap timing, Souffle breath hold/release, Esquive, and Offrande items', () => {
+    const state = createPacifyState(PACIFY_ENCOUNTERS.lynx_boreal, 'resonance');
+    state.rings = [{ id: 10, radius: RESONANCE_TARGET_RADIUS + 2, speed: 30 }];
 
-    // Simulate a gust colliding with the soul
-    state.entities.push({
-      id: 99,
-      kind: 'gust',
-      x: state.soulX,
-      y: state.soulY,
-      vx: 0,
-      vy: 0,
-      radius: 6,
-      wavePhase: 0,
-    });
-    state.progress = 3.0;
+    const tapRes = triggerResonanceTap(state);
+    expect(tapRes.quality).toBe('perfect');
+    expect(state.progress).toBeGreaterThan(2.0);
 
-    const hitEvt = stepPacifyState(state, 0.016, () => 0.5);
-    expect(hitEvt.hit).toBe(true);
-    expect(state.completed).toBe(false);
-    expect(state.progress).toBeLessThan(3.0);
+    // Switch to Souffle mode and release inside serene band
+    switchPacifyMode(state, 'souffle');
+    setSouffleHolding(state, true);
+    state.breathRadius = (SOUFFLE_SERENE_MIN + SOUFFLE_SERENE_MAX) / 2;
+    const souffleRes = setSouffleHolding(state, false);
+    expect(souffleRes.quality).toBe('serene');
+    expect(state.progress).toBeGreaterThan(4.5);
 
-    // Clear entities and step cleanly to completion
-    state.entities = [];
-    let completed = false;
-    for (let i = 0; i < 300; i++) {
+    // Apply Cristal d'écho item
+    const itemRes = applyPacifyItem(state, 'cristal_echo');
+    expect(itemRes.consumed).toBe(true);
+    expect(itemRes.gain).toBeGreaterThan(4);
+
+    // Switch to Esquive and step to completion
+    switchPacifyMode(state, 'esquive');
+    let done = false;
+    for (let i = 0; i < 200; i++) {
       state.entities = [];
       const evt = stepPacifyState(state, 0.05, () => 0.5);
       if (evt.completedNow) {
-        completed = true;
+        done = true;
         break;
       }
     }
-    expect(completed).toBe(true);
+    expect(done).toBe(true);
     expect(state.completed).toBe(true);
-  });
-
-  it('collects snow-notes in catch_notes mode and clamps soul within arena bounds', () => {
-    const spirit = NPCS.find((n) => n.id === 'echo_brouillard')!;
-    const state = createPacifyState(spirit.pacifyConfig);
-
-    setSoulTarget(state, -50, ARENA_HEIGHT + 100);
-    expect(state.targetX).toBeGreaterThan(0);
-    expect(state.targetY).toBeLessThan(ARENA_HEIGHT);
-
-    setSoulTarget(state, ARENA_WIDTH / 2, ARENA_HEIGHT / 2);
-    state.soulX = ARENA_WIDTH / 2;
-    state.soulY = ARENA_HEIGHT / 2;
-    state.entities.push({
-      id: 1,
-      kind: 'note',
-      x: state.soulX + 2,
-      y: state.soulY,
-      vx: 0,
-      vy: 0,
-      radius: 9,
-      wavePhase: 0,
-    });
-
-    const evt = stepPacifyState(state, 0.02, () => 0.5);
-    expect(evt.noteCollected).toBe(true);
-    expect(state.progress).toBeGreaterThan(1.4);
   });
 });
